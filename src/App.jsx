@@ -155,6 +155,24 @@ export default function App() {
   }
 
   async function syncFromHostedJson() {
+    setSyncState('syncing')
+
+    try {
+      const pushed = await pushRemoteVaultBackupJson(auth.username, auth.password)
+      if (pushed?.timestamp) setLastSyncAt(pushed.timestamp)
+      setSyncState('ok')
+      alert('Sincronizacion completada. Se subio tu version local al remoto.')
+      return
+    } catch {
+      setSyncState('error')
+      const shouldLoadRemote = confirm(
+        'No se pudo subir tu version local al remoto. Queres intentar cargar la version remota?'
+      )
+      if (!shouldLoadRemote) {
+        return
+      }
+    }
+
     try {
       const remoteBackup = await fetchRemoteVaultBackupJson(auth.username, auth.password)
       if (remoteBackup) {
@@ -165,6 +183,7 @@ export default function App() {
         setData(syncedData)
         setSelectedDestinationId(null)
         setSelectedDate(null)
+        setSyncState('ok')
         alert('Sincronizacion completada desde el servidor remoto.')
         return
       }
@@ -221,7 +240,7 @@ export default function App() {
           />
           <button className="btn btn-ghost" onClick={exportEncryptedJson}>⬇ shared-vault.json</button>
           <button className="btn btn-ghost" onClick={requestImportEncryptedJson}>⬆ Importar JSON</button>
-          <button className="btn btn-ghost" onClick={syncFromHostedJson}>⟳ Sincronizar remoto</button>
+          <button className="btn btn-ghost" onClick={syncFromHostedJson}>⟳ Sincronizar (subir local)</button>
           <div className={`sync-badge ${syncState}`}>
             <span>{syncState === 'syncing' ? 'Sincronizando...' : syncState === 'ok' ? 'Sincronizado' : syncState === 'error' ? 'Sin sync remoto' : 'Sincronizacion inactiva'}</span>
             <span className="sync-time">{formattedLastSyncAt ? `Ultima sync: ${formattedLastSyncAt}` : 'Ultima sync: -'}</span>
