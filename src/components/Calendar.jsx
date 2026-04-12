@@ -7,10 +7,23 @@ function withHexAlpha(color, alphaHex) {
   return color
 }
 
+function nearestUpcomingMonth(destinations) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  let nearest = null
+  for (const d of destinations) {
+    if (!d.startDate) continue
+    const start = parseISO(d.startDate)
+    if (start >= today && (!nearest || start < nearest)) nearest = start
+  }
+  return nearest
+}
+
 export default function Calendar({ destinations, events, selectedDestinationId, onDayClick }) {
   const today = new Date()
-  const [year, setYear] = useState(today.getFullYear())
-  const [month, setMonth] = useState(today.getMonth())
+  const initialDate = nearestUpcomingMonth(destinations) || today
+  const [year, setYear] = useState(initialDate.getFullYear())
+  const [month, setMonth] = useState(initialDate.getMonth())
 
   const selectedDestination = useMemo(
     () => destinations.find((d) => d.id === selectedDestinationId) || null,
