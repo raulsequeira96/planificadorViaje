@@ -102,9 +102,14 @@ export async function handler(event) {
     return response(200, { ok: true, updatedAt: payload.updatedAt })
   }
 
+  if (event.httpMethod === 'DELETE') {
+    await store.delete(STORE_KEY)
+    return response(200, { ok: true, deletedAt: new Date().toISOString() })
+  }
+
   return {
     statusCode: 405,
-    headers: { Allow: 'GET, POST' },
+    headers: { Allow: 'GET, POST, DELETE' },
     body: ''
   }
 }

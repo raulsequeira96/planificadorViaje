@@ -14,6 +14,7 @@ export default function AuthScreen({ onUnlock }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const canUseStaticFallback = import.meta.env.DEV
 
   function createFreshVault(unlockPassword) {
     const emptyData = { destinations: [], events: [] }
@@ -32,12 +33,17 @@ export default function AuthScreen({ onUnlock }) {
 
     try {
       const remoteBackup = await fetchRemoteVaultBackupJson(username, password)
-      if (remoteBackup) importVaultBackupJson(remoteBackup)
+      if (remoteBackup?.rawJson) importVaultBackupJson(remoteBackup.rawJson)
     } catch {
       // Si no hay endpoint remoto disponible, se usa el flujo local actual.
     }
 
     if (!hasVault()) {
+      if (!canUseStaticFallback) {
+        createFreshVault(password)
+        return
+      }
+
       const restoredFromHostedJson = await hydrateVaultFromHostedJson()
       if (!restoredFromHostedJson) {
         createFreshVault(password)

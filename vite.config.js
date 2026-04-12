@@ -25,6 +25,13 @@ const authProof = CryptoJS.AES.encrypt(
   JSON.stringify({ ok: true, u: authUsername }),
   deriveKey(authPassword, cryptoSeed)
 ).toString()
+const emptyLocalVaultPayload = {
+  app: 'trip-planner',
+  version: 1,
+  note: 'Reemplaza este archivo por el exportado desde la app (shared-vault.json).',
+  vaultCipher: '',
+  authCheckCipher: null
+}
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const localSharedVaultPath = path.join(projectRoot, 'public', 'shared-vault.json')
@@ -109,8 +116,16 @@ function localVaultSyncPlugin() {
           return
         }
 
+        if (req.method === 'DELETE') {
+          await fs.writeFile(localSharedVaultPath, JSON.stringify(emptyLocalVaultPayload, null, 2), 'utf8')
+          res.statusCode = 200
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ ok: true, deletedAt: new Date().toISOString() }))
+          return
+        }
+
         res.statusCode = 405
-        res.setHeader('Allow', 'GET, POST')
+        res.setHeader('Allow', 'GET, POST, DELETE')
         res.end()
       })
     }

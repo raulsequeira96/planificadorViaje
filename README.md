@@ -59,6 +59,8 @@ Este proyecto usa Netlify Functions + Netlify Blobs para persistir el JSON cifra
   - `TRIP_CRYPTO_SEED`
 2. Deployá normalmente.
 3. La app sincroniza automáticamente el vault cifrado con `/api/vault-sync` en cada operación.
+4. El botón `Borrar todo` elimina también el vault remoto (`DELETE /api/vault-sync`).
+5. Si falla el borrado remoto, no se borra local para evitar desincronización.
 
 ## Vista previa del build
 
@@ -74,6 +76,7 @@ Para probar sincronización en tiempo real local, usá `npm run dev`.
 - Se mantiene soporte para exportar/importar JSON cifrado manualmente.
 - En desarrollo local, el endpoint `/api/vault-sync` persiste en `public/shared-vault.json`.
 - En Netlify, el endpoint persiste en Blobs.
+- El fallback por `shared-vault.json` se usa solo en desarrollo para evitar reintroducir datos viejos en producción.
 - Todo el contenido funcional (destinos, eventos, costos, archivos adjuntos) queda cifrado dentro de `vaultCipher`.
 
 ## Modelo de datos

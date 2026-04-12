@@ -4,6 +4,7 @@ import Calendar from './components/Calendar'
 import SidePanel from './components/SidePanel'
 import DayModal from './components/DayModal'
 import {
+  clearRemoteVaultBackup,
   extractBackupTimestamp,
   exportVaultBackupJson,
   fetchRemoteVaultBackupJson,
@@ -20,9 +21,11 @@ export default function App() {
   const [data, setData] = useState(null)
   const [selectedDate, setSelectedDate] = useState(null)
   const [selectedDestinationId, setSelectedDestinationId] = useState(null)
+  const [isMobileActionsOpen, setIsMobileActionsOpen] = useState(false)
   const backupInputRef = useRef(null)
   const [syncState, setSyncState] = useState('idle')
   const [lastSyncAt, setLastSyncAt] = useState(null)
+  const canUseStaticFallback = import.meta.env.DEV
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem('theme')
     return savedTheme === 'light' ? 'light' : 'dark'
@@ -82,6 +85,7 @@ export default function App() {
   }
 
   function lock() {
+    setIsMobileActionsOpen(false)
     setAuth(null)
     setData(null)
     setSelectedDestinationId(null)
@@ -89,8 +93,19 @@ export default function App() {
     setLastSyncAt(null)
   }
 
-  function resetAll() {
+  async function resetAll() {
     if (!confirm('Esto borra todos los datos cifrados de este dispositivo. ¿Continuar?')) return
+    setIsMobileActionsOpen(false)
+
+    setSyncState('syncing')
+    try {
+      await clearRemoteVaultBackup(auth.username, auth.password)
+    } catch {
+      setSyncState('error')
+      alert('No se pudo borrar el vault remoto. No se borró nada local para evitar inconsistencias.')
+      return
+    }
+
     wipeVault()
     setAuth(null)
     setData(null)
@@ -100,10 +115,12 @@ export default function App() {
   }
 
   function toggleTheme() {
+    setIsMobileActionsOpen(false)
     setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))
   }
 
   function exportEncryptedJson() {
+    setIsMobileActionsOpen(false)
     const backupJson = exportVaultBackupJson()
     if (!backupJson) {
       alert('Todavia no hay datos para exportar.')
@@ -123,6 +140,7 @@ export default function App() {
   }
 
   function requestImportEncryptedJson() {
+    setIsMobileActionsOpen(false)
     backupInputRef.current?.click()
   }
 
@@ -155,6 +173,7 @@ export default function App() {
   }
 
   async function syncFromHostedJson() {
+    setIsMobileActionsOpen(false)
     setSyncState('syncing')
 
     try {
@@ -189,6 +208,11 @@ export default function App() {
       }
     } catch {
       // Si falla endpoint remoto, intento fallback por archivo estatico.
+    }
+
+    if (!canUseStaticFallback) {
+      alert('No se encontro vault remoto para descargar.')
+      return
     }
 
     const imported = await hydrateVaultFromHostedJson()
@@ -231,25 +255,36 @@ export default function App() {
           <div className="subtitle">Planificador de viaje</div>
         </div>
         <div className="header-actions">
-          <input
-            ref={backupInputRef}
-            type="file"
-            accept="application/json"
-            style={{ display: 'none' }}
-            onChange={handleImportEncryptedJson}
-          />
-          <button className="btn btn-ghost" onClick={exportEncryptedJson}>⬇ shared-vault.json</button>
-          <button className="btn btn-ghost" onClick={requestImportEncryptedJson}>⬆ Importar JSON</button>
-          <button className="btn btn-ghost" onClick={syncFromHostedJson}>⟳ Sincronizar (subir local)</button>
-          <div className={`sync-badge ${syncState}`}>
-            <span>{syncState === 'syncing' ? 'Sincronizando...' : syncState === 'ok' ? 'Sincronizado' : syncState === 'error' ? 'Sin sync remoto' : 'Sincronizacion inactiva'}</span>
-            <span className="sync-time">{formattedLastSyncAt ? `Ultima sync: ${formattedLastSyncAt}` : 'Ultima sync: -'}</span>
-          </div>
-          <button className="btn btn-ghost theme-toggle" onClick={toggleTheme}>
-            {theme === 'light' ? '🌙 Modo oscuro' : '☀️ Modo claro'}
+          <button
+            type="button"
+            className="btn btn-ghost mobile-actions-toggle"
+            onClick={() => setIsMobileActionsOpen((open) => !open)}
+            aria-expanded={isMobileActionsOpen}
+          >
+            {isMobileActionsOpen ? 'Cerrar acciones' : 'Abrir acciones'}
           </button>
-          <button className="btn btn-ghost" onClick={lock}>🔒 Bloquear</button>
-          <button className="btn btn-danger" onClick={resetAll}>Borrar todo</button>
+
+          <div className={`header-actions-menu ${isMobileActionsOpen ? 'open' : ''}`}>
+            <input
+              ref={backupInputRef}
+              type="file"
+              accept="application/json"
+              style={{ display: 'none' }}
+              onChange={handleImportEncryptedJson}
+            />
+            <button className="btn btn-ghost" onClick={exportEncryptedJson}>⬇ shared-vault.json</button>
+            <button className="btn btn-ghost" onClick={requestImportEncryptedJson}>⬆ Importar JSON</button>
+            <button className="btn btn-ghost" onClick={syncFromHostedJson}>⟳ Sincronizar (subir local)</button>
+            <div className={`sync-badge ${syncState}`}>
+              <span>{syncState === 'syncing' ? 'Sincronizando...' : syncState === 'ok' ? 'Sincronizado' : syncState === 'error' ? 'Sin sync remoto' : 'Sincronizacion inactiva'}</span>
+              <span className="sync-time">{formattedLastSyncAt ? `Ultima sync: ${formattedLastSyncAt}` : 'Ultima sync: -'}</span>
+            </div>
+            <button className="btn btn-ghost theme-toggle" onClick={toggleTheme}>
+              {theme === 'light' ? '🌙 Modo oscuro' : '☀️ Modo claro'}
+            </button>
+            <button className="btn btn-ghost" onClick={lock}>🔒 Bloquear</button>
+            <button className="btn btn-danger" onClick={resetAll}>Borrar todo</button>
+          </div>
         </div>
       </header>
 

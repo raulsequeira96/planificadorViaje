@@ -167,6 +167,19 @@ export async function pushRemoteVaultBackupJson(username, password) {
   }
 }
 
+export async function clearRemoteVaultBackup(username, password) {
+  const res = await fetch(REMOTE_SYNC_PATH, {
+    method: 'DELETE',
+    headers: {
+      Authorization: buildAuthHeader(username, password)
+    }
+  })
+
+  if (res.status === 404) return true
+  if (!res.ok) throw new Error('No se pudo borrar el vault remoto')
+  return true
+}
+
 export function importVaultBackupJson(rawJson) {
   let parsed
   try {
