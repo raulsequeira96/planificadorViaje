@@ -34,6 +34,8 @@ export default function App() {
     return savedTheme === 'light' ? 'light' : 'dark'
   })
   const [toasts, setToasts] = useState([])
+  const [showEmailDialog, setShowEmailDialog] = useState(false)
+  const [notificationEmail, setNotificationEmail] = useState(() => localStorage.getItem('trip-planner-email') || '')
 
   const showToast = useCallback((message, type = 'info', opts = {}) => {
     const id = ++toastIdCounter
@@ -115,6 +117,21 @@ export default function App() {
   function deleteEvent(id) {
     if (!confirm('¿Eliminar este evento?')) return
     setData({ ...data, events: data.events.filter((e) => e.id !== id) })
+  }
+
+  function saveEmail(email) {
+    const trimmed = email.trim()
+    if (trimmed) {
+      localStorage.setItem('trip-planner-email', trimmed)
+      setNotificationEmail(trimmed)
+      showToast('Email guardado', 'success')
+    } else {
+      localStorage.removeItem('trip-planner-email')
+      setNotificationEmail('')
+      showToast('Email eliminado', 'info')
+    }
+    setShowEmailDialog(false)
+    setIsMobileActionsOpen(false)
   }
 
   function lock() {
@@ -308,17 +325,16 @@ export default function App() {
               style={{ display: 'none' }}
               onChange={handleImportEncryptedJson}
             />
-            <button className="btn btn-ghost" onClick={exportEncryptedJson}>⬇ shared-vault.json</button>
-            <button className="btn btn-ghost" onClick={requestImportEncryptedJson}>⬆ Importar JSON</button>
-            <button className="btn btn-ghost" onClick={syncFromHostedJson}>⟳ Sincronizar (subir local)</button>
+            <button className="btn btn-ghost" onClick={syncFromHostedJson}>⟳ Sincronizar</button>
             <div className={`sync-badge ${syncState}`}>
               <span>{syncState === 'syncing' ? 'Sincronizando...' : syncState === 'ok' ? 'Sincronizado' : syncState === 'error' ? 'Sin sync remoto' : 'Sincronizacion inactiva'}</span>
               <span className="sync-time">{formattedLastSyncAt ? `Ultima sync: ${formattedLastSyncAt}` : 'Ultima sync: -'}</span>
             </div>
+            <button className="btn btn-ghost" onClick={() => setShowEmailDialog(true)}>✉ Email de aviso</button>
             <button className="btn btn-ghost theme-toggle" onClick={toggleTheme}>
               {theme === 'light' ? '🌙 Modo oscuro' : '☀️ Modo claro'}
             </button>
-            <button className="btn btn-ghost" onClick={lock}>🔒 Bloquear</button>
+            <button className="btn btn-ghost" onClick={lock}>Cerrar sesion</button>
             <button className="btn btn-danger" onClick={resetAll}>Borrar todo</button>
           </div>
         </div>
@@ -355,7 +371,61 @@ export default function App() {
         />
       )}
 
+      {showEmailDialog && (
+        <EmailDialog
+          currentEmail={notificationEmail}
+          onSave={saveEmail}
+          onClose={() => setShowEmailDialog(false)}
+        />
+      )}
+
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+    </div>
+  )
+}
+
+function EmailDialog({ currentEmail, onSave, onClose }) {
+  const [email, setEmail] = useState(currentEmail)
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    onSave(email)
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal email-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <div>
+            <h2>Email de notificacion</h2>
+          </div>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <div className="email-dialog-note">
+            Este email se usara en el futuro para enviarte un recordatorio antes de cada viaje con el resumen de tu itinerario. Por ahora solo se guarda localmente.
+          </div>
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tu@email.com"
+                autoFocus
+              />
+            </div>
+            <div className="form-actions">
+              <button type="button" className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+              {currentEmail && (
+                <button type="button" className="btn btn-danger" onClick={() => onSave('')}>Quitar</button>
+              )}
+              <button type="submit" className="btn btn-primary">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   )
 }
