@@ -192,6 +192,7 @@ export default function App() {
       }
     }
 
+    let apiFetchFailed = false
     try {
       const remoteBackup = await fetchRemoteVaultBackupJson(auth.username, auth.password)
       if (remoteBackup) {
@@ -206,32 +207,34 @@ export default function App() {
         alert('Sincronizacion completada desde el servidor remoto.')
         return
       }
-    } catch {
-      // Si falla endpoint remoto, intento fallback por archivo estatico.
-    }
-
-    if (!canUseStaticFallback) {
-      alert('No se encontro vault remoto para descargar.')
+      // remoteBackup es null → 404: no hay vault en el servidor
+      alert('No hay vault almacenado en el servidor remoto todavia. Cuando la conexion funcione, tu version local se subira automaticamente.')
       return
-    }
-
-    const imported = await hydrateVaultFromHostedJson()
-    if (!imported) {
-      alert('No se encontro vault remoto (API ni shared-vault.json).')
-      return
-    }
-    if (imported.timestamp) setLastSyncAt(imported.timestamp)
-
-    try {
-      const syncedData = loadVault(auth.password)
-      if (!syncedData) throw new Error('Vault vacio')
-      setData(syncedData)
-      setSelectedDestinationId(null)
-      setSelectedDate(null)
-      alert('Sincronizacion completada desde shared-vault.json')
     } catch {
-      alert('El vault remoto no coincide con tus credenciales o semilla del build.')
+      apiFetchFailed = true
     }
+
+    // Fallback: archivo estático solo en desarrollo
+    if (canUseStaticFallback) {
+      const imported = await hydrateVaultFromHostedJson()
+      if (imported) {
+        if (imported.timestamp) setLastSyncAt(imported.timestamp)
+        try {
+          const syncedData = loadVault(auth.password)
+          if (!syncedData) throw new Error('Vault vacio')
+          setData(syncedData)
+          setSelectedDestinationId(null)
+          setSelectedDate(null)
+          alert('Sincronizacion completada desde shared-vault.json')
+          return
+        } catch {
+          alert('El vault remoto no coincide con tus credenciales o semilla del build.')
+          return
+        }
+      }
+    }
+
+    alert('No se pudo conectar con el servidor remoto. Verifica tu conexion a internet y que el sitio este desplegado correctamente en Netlify con las variables de entorno TRIP_AUTH_USERNAME y TRIP_AUTH_PASSWORD configuradas.')
   }
 
   const selectedEvents = selectedDate
