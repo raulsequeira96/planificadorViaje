@@ -39,7 +39,8 @@ export default function Calendar({ destinations, events, selectedDestinationId, 
     return map
   }, [events])
 
-  const destinationByDate = useMemo(() => {
+  // Ahora almacena un ARRAY de destinos por fecha para mostrar superposiciones
+  const destinationsByDate = useMemo(() => {
     const map = {}
     const visibleDestinations = selectedDestinationId
       ? destinations.filter((d) => d.id === selectedDestinationId)
@@ -51,7 +52,9 @@ export default function Calendar({ destinations, events, selectedDestinationId, 
       const end = parseISO(d.endDate)
       const cur = new Date(start)
       while (cur <= end) {
-        map[formatDateISO(cur)] = d
+        const key = formatDateISO(cur)
+        if (!map[key]) map[key] = []
+        map[key].push(d)
         cur.setDate(cur.getDate() + 1)
       }
     }
@@ -90,9 +93,9 @@ export default function Calendar({ destinations, events, selectedDestinationId, 
           )}
         </div>
         <div className="calendar-nav">
-          <button onClick={prev} aria-label="Mes anterior">‹</button>
-          <button onClick={() => { setYear(today.getFullYear()); setMonth(today.getMonth()) }} aria-label="Hoy">●</button>
-          <button onClick={next} aria-label="Mes siguiente">›</button>
+          <button onClick={prev} aria-label="Mes anterior">&#8249;</button>
+          <button onClick={() => { setYear(today.getFullYear()); setMonth(today.getMonth()) }} aria-label="Hoy">&#9679;</button>
+          <button onClick={next} aria-label="Mes siguiente">&#8250;</button>
         </div>
       </div>
 
@@ -104,11 +107,12 @@ export default function Calendar({ destinations, events, selectedDestinationId, 
         {cells.map((day, idx) => {
           if (day === null) return <div key={'e'+idx} className="day-cell empty" />
           const iso = formatDateISO(new Date(year, month, day))
-          const dest = destinationByDate[iso]
+          const dests = destinationsByDate[iso] || []
+          const dest = dests[0] || null
           const dayEvents = eventsByDate[iso] || []
           const uniqueIcons = [...new Set(dayEvents.map((e) => EVENT_TYPES[e.type]?.icon).filter(Boolean))]
           const isToday = iso === todayISO
-          const isSelectedDestinationDay = !!selectedDestination && dest?.id === selectedDestination.id
+          const isSelectedDestinationDay = !!selectedDestination && dests.some((d) => d.id === selectedDestination.id)
           const selectedBackground = isSelectedDestinationDay
             ? `linear-gradient(180deg, ${withHexAlpha(dest.color, '2b')}, var(--bg-paper) 76%)`
             : undefined
@@ -116,13 +120,30 @@ export default function Calendar({ destinations, events, selectedDestinationId, 
           return (
             <div
               key={iso}
-              className={`day-cell ${isToday ? 'today' : ''} ${dest ? 'in-range' : ''} ${isSelectedDestinationDay ? 'selected-destination' : ''}`}
+              className={`day-cell ${isToday ? 'today' : ''} ${dests.length > 0 ? 'in-range' : ''} ${isSelectedDestinationDay ? 'selected-destination' : ''}`}
               style={isSelectedDestinationDay ? { '--destination-color': dest.color, background: selectedBackground } : undefined}
               onClick={() => onDayClick(iso)}
             >
-              {dest && <div className="range-bar" style={{ background: dest.color }} />}
+              {/* Barras de destino: una por cada destino en ese día */}
+              {dests.length === 1 && (
+                <div className="range-bar" style={{ background: dests[0].color }} />
+              )}
+              {dests.length > 1 && (
+                <div className="range-bar range-bar-multi">
+                  {dests.map((d) => (
+                    <div key={d.id} className="range-bar-segment" style={{ background: d.color }} />
+                  ))}
+                </div>
+              )}
               <div className="day-number">{day}</div>
-              {dest && <div className="destination-label">{dest.name}</div>}
+              {dests.length === 1 && <div className="destination-label">{dests[0].name}</div>}
+              {dests.length > 1 && (
+                <div className="destination-label destination-label-multi">
+                  {dests.map((d) => (
+                    <span key={d.id} className="dest-dot" style={{ background: d.color }} title={d.name} />
+                  ))}
+                </div>
+              )}
               {uniqueIcons.length > 0 && (
                 <div className="day-icons">
                   {uniqueIcons.slice(0, 4).map((icon, i) => (

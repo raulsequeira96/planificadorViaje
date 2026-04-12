@@ -415,6 +415,30 @@ input, textarea, select {
   height: 4px;
 }
 
+.day-cell .range-bar.range-bar-multi {
+  display: flex;
+  background: none;
+}
+
+.day-cell .range-bar-segment {
+  flex: 1;
+  height: 4px;
+}
+
+.destination-label-multi {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.destination-label-multi .dest-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
 .day-number {
   font-family: var(--font-display);
   font-size: 16px;
@@ -968,6 +992,182 @@ input, textarea, select {
 }
 
 .attachment-preview .file-icon { font-size: 18px; }
+
+/* ============ File select button ============ */
+.file-select-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* ============ Destination inline edit ============ */
+.destination-edit-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.destination-edit-input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-xs);
+  background: var(--bg-paper);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.destination-edit-input:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+
+.destination-edit-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-inline-save,
+.btn-inline-cancel {
+  padding: 2px 8px;
+  font-size: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-xs);
+  background: var(--bg);
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-inline-save:hover {
+  background: var(--ok);
+  color: white;
+  border-color: var(--ok);
+}
+
+.btn-inline-cancel:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+/* ============ Event attachment info ============ */
+.event-attachment-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-top: 8px;
+  background: var(--bg-paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.event-attachment-info .file-icon { font-size: 16px; }
+.event-attachment-info .file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+
+/* ============ Toast ============ */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  max-width: 420px;
+  width: calc(100% - 32px);
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--ink);
+  color: var(--bg-paper);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 32px -8px rgba(0,0,0,0.4);
+  font-size: 13px;
+  animation: toastIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes toastIn {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.toast-icon {
+  font-size: 15px;
+  font-weight: 700;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+.toast-success .toast-icon {
+  background: var(--ok);
+  color: white;
+}
+
+.toast-error .toast-icon {
+  background: var(--accent);
+  color: white;
+}
+
+.toast-info .toast-icon {
+  background: var(--gold);
+  color: white;
+}
+
+.toast-msg {
+  flex: 1;
+}
+
+.toast-undo {
+  background: transparent;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-xs);
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.toast-undo:hover {
+  background: var(--gold);
+  color: var(--ink);
+}
+
+.toast-close {
+  background: transparent;
+  color: var(--bg-paper);
+  opacity: 0.5;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+.toast-close:hover { opacity: 1; }
 
 /* ============ Utilities ============ */
 .divider {
