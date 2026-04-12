@@ -341,6 +341,16 @@ input, textarea, select {
   border-color: var(--ink);
 }
 
+.calendar-nav .btn-today {
+  width: auto;
+  padding: 0 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -1168,6 +1178,22 @@ input, textarea, select {
 }
 
 .toast-close:hover { opacity: 1; }
+
+/* ============ Email dialog ============ */
+.email-dialog {
+  max-width: 440px;
+}
+
+.email-dialog-note {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+}
 
 /* ============ Utilities ============ */
 .divider {

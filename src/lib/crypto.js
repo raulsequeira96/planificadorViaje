@@ -218,6 +218,37 @@ export async function hydrateVaultFromHostedJson(path = HOSTED_BACKUP_PATH) {
   }
 }
 
+const LOCAL_BACKUP_KEY = 'trip-planner-vault-backup'
+const LOCAL_BACKUP_TS_KEY = 'trip-planner-vault-backup-ts'
+
+export function snapshotLocalBackup() {
+  const vault = localStorage.getItem(STORAGE_KEY)
+  const authCheck = localStorage.getItem(AUTH_CHECK_KEY)
+  if (!vault) return false
+  localStorage.setItem(LOCAL_BACKUP_KEY, JSON.stringify({ vault, authCheck }))
+  localStorage.setItem(LOCAL_BACKUP_TS_KEY, new Date().toISOString())
+  return true
+}
+
+export function restoreLocalBackup() {
+  const raw = localStorage.getItem(LOCAL_BACKUP_KEY)
+  if (!raw) return false
+  const { vault, authCheck } = JSON.parse(raw)
+  if (!vault) return false
+  localStorage.setItem(STORAGE_KEY, vault)
+  if (authCheck) localStorage.setItem(AUTH_CHECK_KEY, authCheck)
+  else localStorage.removeItem(AUTH_CHECK_KEY)
+  return true
+}
+
+export function getLocalBackupTimestamp() {
+  return localStorage.getItem(LOCAL_BACKUP_TS_KEY) || null
+}
+
+export function hasLocalBackup() {
+  return !!localStorage.getItem(LOCAL_BACKUP_KEY)
+}
+
 export function wipeVault() {
   localStorage.removeItem(STORAGE_KEY)
   localStorage.removeItem(AUTH_CHECK_KEY)

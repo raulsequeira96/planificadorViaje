@@ -94,7 +94,7 @@ export default function Calendar({ destinations, events, selectedDestinationId, 
         </div>
         <div className="calendar-nav">
           <button onClick={prev} aria-label="Mes anterior">&#8249;</button>
-          <button onClick={() => { setYear(today.getFullYear()); setMonth(today.getMonth()) }} aria-label="Hoy">&#9679;</button>
+          <button className="btn-today" onClick={() => { setYear(today.getFullYear()); setMonth(today.getMonth()) }}>Hoy</button>
           <button onClick={next} aria-label="Mes siguiente">&#8250;</button>
         </div>
       </div>
