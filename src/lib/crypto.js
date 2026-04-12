@@ -126,7 +126,11 @@ export async function fetchRemoteVaultBackupJson(username, password) {
   })
 
   if (res.status === 404) return null
-  if (!res.ok) throw new Error('No se pudo leer el vault remoto')
+  if (!res.ok) {
+    let detail = ''
+    try { detail = (await res.json()).error || '' } catch {}
+    throw new Error(`Fetch fallo (${res.status}): ${detail || res.statusText}`)
+  }
   const rawJson = await res.text()
   return {
     rawJson,
@@ -154,7 +158,11 @@ export async function pushRemoteVaultBackupJson(username, password) {
     })
   })
 
-  if (!res.ok) throw new Error('No se pudo actualizar el vault remoto')
+  if (!res.ok) {
+    let detail = ''
+    try { detail = (await res.json()).error || '' } catch {}
+    throw new Error(`Push fallo (${res.status}): ${detail || res.statusText}`)
+  }
   let responseJson = null
   try {
     responseJson = await res.json()

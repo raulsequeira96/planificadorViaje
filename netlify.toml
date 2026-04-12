@@ -5,3 +5,4 @@
   from = "/api/vault-sync"
   to = "/.netlify/functions/vault-sync"
   status = 200
+  force = true

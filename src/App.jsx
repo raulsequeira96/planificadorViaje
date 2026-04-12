@@ -170,7 +170,7 @@ export default function App() {
       showToast('Datos subidos a la nube correctamente', 'success')
     } catch (err) {
       setSyncState('error')
-      showToast('No se pudo subir al servidor. Verifica tu conexion y que Netlify tenga las variables TRIP_AUTH_USERNAME y TRIP_AUTH_PASSWORD configuradas.', 'error', { duration: 6000 })
+      showToast(`Error al subir: ${err.message}`, 'error', { duration: 6000 })
     }
   }
 
@@ -203,7 +203,7 @@ export default function App() {
       setSyncState('error')
       // Restauro el backup si fallo la descarga
       restoreLocalBackup()
-      showToast('No se pudo descargar de la nube. Verifica tu conexion y credenciales.', 'error', { duration: 5000 })
+      showToast(`Error al bajar: ${err.message}`, 'error', { duration: 6000 })
     }
   }
 
