@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { EVENT_TYPES, getEventStartTime, parseISO } from '../lib/events'
+import { EVENT_TYPES, COMMON_FIELDS, getEventStartTime, parseISO } from '../lib/events'
 import EventForm from './EventForm'
 
-export default function DayModal({ date, events, onClose, onSaveEvent, onDeleteEvent }) {
+export default function DayModal({ date, events, onClose, onSaveEvent, onDeleteEvent, showToast }) {
   const [editing, setEditing] = useState(null) // null | 'new' | event
   const dayEvents = [...events].sort((a, b) => getEventStartTime(a).localeCompare(getEventStartTime(b)))
 
@@ -26,6 +26,30 @@ export default function DayModal({ date, events, onClose, onSaveEvent, onDeleteE
     }
   }
 
+  function downloadAttachment(attachment) {
+    if (!attachment?.dataUrl) return
+    const a = document.createElement('a')
+    a.href = attachment.dataUrl
+    a.download = attachment.name || 'adjunto'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }
+
+  function handleSaveEvent(ev) {
+    onSaveEvent(ev)
+    setEditing(null)
+    if (showToast) {
+      const isNew = !events.find((e) => e.id === ev.id)
+      showToast(isNew ? 'Evento creado' : 'Evento actualizado', 'success')
+    }
+  }
+
+  function handleDeleteEvent(id) {
+    onDeleteEvent(id)
+    if (showToast) showToast('Evento eliminado', 'success')
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -42,14 +66,14 @@ export default function DayModal({ date, events, onClose, onSaveEvent, onDeleteE
             <EventForm
               date={date}
               existing={editing === 'new' ? null : editing}
-              onSave={(ev) => { onSaveEvent(ev); setEditing(null) }}
+              onSave={handleSaveEvent}
               onCancel={() => setEditing(null)}
             />
           ) : (
             <>
               <div className="day-events">
                 {dayEvents.length === 0 && (
-                  <div className="empty-state">Sin eventos. Agregá el primero abajo.</div>
+                  <div className="empty-state">Sin eventos. Agrega el primero abajo.</div>
                 )}
 
                 {dayEvents.map((event) => {
@@ -84,19 +108,37 @@ export default function DayModal({ date, events, onClose, onSaveEvent, onDeleteE
                             <span className="val">${event.data.cost}</span>
                           </div>
                         )}
+                        {event.data.mapLocation && (
+                          <div className="event-detail-row">
+                            <span className="key">Ubicacion</span>
+                            <span className="val">{event.data.mapLocation}</span>
+                          </div>
+                        )}
                       </div>
+
+                      {event.attachment && (
+                        <div className="event-attachment-info">
+                          <span className="file-icon">{event.attachment.type?.startsWith('image') ? '🖼️' : '📄'}</span>
+                          <span className="file-name">{event.attachment.name}</span>
+                        </div>
+                      )}
 
                       <div className="event-actions">
                         {mapLoc && (
-                          <a href={mapsUrl(mapLoc)} target="_blank" rel="noopener noreferrer">📍 Abrir en Maps</a>
+                          <a href={mapsUrl(mapLoc)} target="_blank" rel="noopener noreferrer">📍 Maps</a>
                         )}
                         {event.attachment && (
-                          <button onClick={() => openAttachment(event.attachment)}>
-                            {event.attachment.type?.startsWith('image') ? '🖼️' : '📄'} Ver adjunto
-                          </button>
+                          <>
+                            <button onClick={() => openAttachment(event.attachment)}>
+                              {event.attachment.type?.startsWith('image') ? '🖼️' : '📄'} Ver
+                            </button>
+                            <button onClick={() => downloadAttachment(event.attachment)}>
+                              ⬇ Descargar
+                            </button>
+                          </>
                         )}
                         <button onClick={() => setEditing(event)}>Editar</button>
-                        <button onClick={() => onDeleteEvent(event.id)}>Eliminar</button>
+                        <button onClick={() => handleDeleteEvent(event.id)}>Eliminar</button>
                       </div>
                     </div>
                   )

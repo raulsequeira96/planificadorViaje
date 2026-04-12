@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { EVENT_TYPES, COMMON_FIELDS, uid } from '../lib/events'
 
 export default function EventForm({ date, existing, onSave, onCancel }) {
   const [type, setType] = useState(existing?.type || 'flight')
   const [data, setData] = useState(existing?.data || {})
   const [attachment, setAttachment] = useState(existing?.attachment || null)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     if (!existing) {
@@ -89,16 +90,26 @@ export default function EventForm({ date, existing, onSave, onCancel }) {
             <div key={field.key} className="form-group">
               <label>{field.label}</label>
               <input
+                ref={fileInputRef}
                 type="file"
                 accept="application/pdf,image/*"
                 onChange={(e) => handleFile(e.target.files?.[0])}
+                style={{ display: 'none' }}
               />
-              {attachment && (
+              {attachment ? (
                 <div className="attachment-preview">
                   <span className="file-icon">{attachment.type?.startsWith('image') ? '🖼️' : '📄'}</span>
                   <span style={{ flex: 1 }}>{attachment.name}</span>
                   <button type="button" className="btn-icon" onClick={() => setAttachment(null)}>×</button>
                 </div>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-ghost file-select-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Seleccionar
+                </button>
               )}
             </div>
           )

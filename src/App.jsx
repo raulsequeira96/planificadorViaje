@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import AuthScreen from './components/AuthScreen'
 import Calendar from './components/Calendar'
 import SidePanel from './components/SidePanel'
 import DayModal from './components/DayModal'
+import ToastContainer from './components/Toast'
 import {
   clearRemoteVaultBackup,
   extractBackupTimestamp,
@@ -15,6 +16,8 @@ import {
   saveVault,
   wipeVault
 } from './lib/crypto'
+
+let toastIdCounter = 0
 
 export default function App() {
   const [auth, setAuth] = useState(null)
@@ -30,6 +33,16 @@ export default function App() {
     const savedTheme = localStorage.getItem('theme')
     return savedTheme === 'light' ? 'light' : 'dark'
   })
+  const [toasts, setToasts] = useState([])
+
+  const showToast = useCallback((message, type = 'info', opts = {}) => {
+    const id = ++toastIdCounter
+    setToasts((prev) => [...prev, { id, message, type, duration: opts.duration || 3000, undoAction: opts.undoAction || null }])
+  }, [])
+
+  const dismissToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }, [])
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme)
@@ -65,10 +78,30 @@ export default function App() {
     setSelectedDestinationId(dest.id)
   }
 
+  function editDestination(id, changes) {
+    setData({
+      ...data,
+      destinations: data.destinations.map((d) => d.id === id ? { ...d, ...changes } : d)
+    })
+  }
+
   function deleteDestination(id) {
     if (!confirm('¿Eliminar destino? Los eventos asociados a sus fechas no se borran.')) return
     setData({ ...data, destinations: data.destinations.filter((d) => d.id !== id) })
     if (selectedDestinationId === id) setSelectedDestinationId(null)
+  }
+
+  function clearDestinations() {
+    const backup = data.destinations
+    setData({ ...data, destinations: [] })
+    setSelectedDestinationId(null)
+    showToast('Todos los destinos eliminados', 'success', {
+      duration: 2000,
+      undoAction: () => {
+        setData((prev) => ({ ...prev, destinations: backup }))
+        showToast('Destinos restaurados', 'success')
+      }
+    })
   }
 
   function saveEvent(event) {
@@ -102,7 +135,7 @@ export default function App() {
       await clearRemoteVaultBackup(auth.username, auth.password)
     } catch {
       setSyncState('error')
-      alert('No se pudo borrar el vault remoto. No se borró nada local para evitar inconsistencias.')
+      showToast('No se pudo borrar el vault remoto', 'error')
       return
     }
 
@@ -123,7 +156,7 @@ export default function App() {
     setIsMobileActionsOpen(false)
     const backupJson = exportVaultBackupJson()
     if (!backupJson) {
-      alert('Todavia no hay datos para exportar.')
+      showToast('Todavia no hay datos para exportar', 'error')
       return
     }
 
@@ -136,7 +169,7 @@ export default function App() {
     a.click()
     a.remove()
     URL.revokeObjectURL(url)
-    alert('Descargado como shared-vault.json. Subilo a public/shared-vault.json y redeploy para compartirlo en otros celulares.')
+    showToast('Backup descargado como shared-vault.json', 'success')
   }
 
   function requestImportEncryptedJson() {
@@ -164,9 +197,9 @@ export default function App() {
       setData(importedData)
       setSelectedDestinationId(null)
       setSelectedDate(null)
-      alert('Backup cifrado importado correctamente.')
+      showToast('Backup importado correctamente', 'success')
     } catch {
-      alert('No se pudo importar el JSON cifrado. Verifica usuario, contrasena y semilla del build.')
+      showToast('No se pudo importar el JSON cifrado', 'error')
     } finally {
       e.target.value = ''
     }
@@ -180,7 +213,7 @@ export default function App() {
       const pushed = await pushRemoteVaultBackupJson(auth.username, auth.password)
       if (pushed?.timestamp) setLastSyncAt(pushed.timestamp)
       setSyncState('ok')
-      alert('Sincronizacion completada. Se subio tu version local al remoto.')
+      showToast('Sincronizacion completada', 'success')
       return
     } catch {
       setSyncState('error')
@@ -204,17 +237,17 @@ export default function App() {
         setSelectedDestinationId(null)
         setSelectedDate(null)
         setSyncState('ok')
-        alert('Sincronizacion completada desde el servidor remoto.')
+        showToast('Sincronizacion completada desde el servidor remoto', 'success')
         return
       }
       // remoteBackup es null → 404: no hay vault en el servidor
-      alert('No hay vault almacenado en el servidor remoto todavia. Cuando la conexion funcione, tu version local se subira automaticamente.')
+      showToast('No hay vault almacenado en el servidor remoto todavia', 'info')
       return
     } catch {
       apiFetchFailed = true
     }
 
-    // Fallback: archivo estático solo en desarrollo
+    // Fallback: archivo estatico solo en desarrollo
     if (canUseStaticFallback) {
       const imported = await hydrateVaultFromHostedJson()
       if (imported) {
@@ -225,16 +258,16 @@ export default function App() {
           setData(syncedData)
           setSelectedDestinationId(null)
           setSelectedDate(null)
-          alert('Sincronizacion completada desde shared-vault.json')
+          showToast('Sincronizacion completada desde shared-vault.json', 'success')
           return
         } catch {
-          alert('El vault remoto no coincide con tus credenciales o semilla del build.')
+          showToast('El vault remoto no coincide con tus credenciales', 'error')
           return
         }
       }
     }
 
-    alert('No se pudo conectar con el servidor remoto. Verifica tu conexion a internet y que el sitio este desplegado correctamente en Netlify con las variables de entorno TRIP_AUTH_USERNAME y TRIP_AUTH_PASSWORD configuradas.')
+    showToast('No se pudo conectar con el servidor remoto. Verifica tu conexion y configuracion de Netlify.', 'error', { duration: 5000 })
   }
 
   const selectedEvents = selectedDate
@@ -305,6 +338,9 @@ export default function App() {
           onSelectDestination={setSelectedDestinationId}
           onAddDestination={addDestination}
           onDeleteDestination={deleteDestination}
+          onEditDestination={editDestination}
+          onClearDestinations={clearDestinations}
+          showToast={showToast}
         />
       </main>
 
@@ -315,8 +351,11 @@ export default function App() {
           onClose={() => setSelectedDate(null)}
           onSaveEvent={saveEvent}
           onDeleteEvent={deleteEvent}
+          showToast={showToast}
         />
       )}
+
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   )
 }

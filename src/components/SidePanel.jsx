@@ -7,10 +7,15 @@ export default function SidePanel({
   selectedDestinationId,
   onSelectDestination,
   onAddDestination,
-  onDeleteDestination
+  onDeleteDestination,
+  onEditDestination,
+  onClearDestinations,
+  showToast
 }) {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', startDate: '', endDate: '' })
+  const [editingId, setEditingId] = useState(null)
+  const [editName, setEditName] = useState('')
 
   function handleAdd(e) {
     e.preventDefault()
@@ -19,6 +24,39 @@ export default function SidePanel({
     onAddDestination({ id: uid(), ...form, color })
     setForm({ name: '', startDate: '', endDate: '' })
     setShowForm(false)
+    if (showToast) showToast('Destino creado', 'success')
+  }
+
+  function startEdit(dest) {
+    setEditingId(dest.id)
+    setEditName(dest.name)
+  }
+
+  function saveEdit(dest) {
+    const trimmed = editName.trim()
+    if (!trimmed) return
+    if (trimmed !== dest.name) {
+      onEditDestination(dest.id, { name: trimmed })
+      if (showToast) showToast('Destino actualizado', 'success')
+    }
+    setEditingId(null)
+    setEditName('')
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditName('')
+  }
+
+  function handleClear() {
+    if (destinations.length === 0) return
+    if (!confirm('¿Estas seguro de eliminar todos los destinos?')) return
+    onClearDestinations()
+  }
+
+  function handleDelete(id) {
+    onDeleteDestination(id)
+    if (showToast) showToast('Destino eliminado', 'success')
   }
 
   return (
@@ -53,7 +91,7 @@ export default function SidePanel({
         )}
 
         {destinations.length === 0 && !showForm && (
-          <div className="empty-state">Aún no hay destinos</div>
+          <div className="empty-state">Aun no hay destinos</div>
         )}
 
         <div className="destination-list">
@@ -61,7 +99,7 @@ export default function SidePanel({
             <div
               key={d.id}
               className={`destination-item ${selectedDestinationId === d.id ? 'selected' : ''}`}
-              onClick={() => onSelectDestination(d.id)}
+              onClick={() => { if (editingId !== d.id) onSelectDestination(d.id) }}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
@@ -73,16 +111,44 @@ export default function SidePanel({
             >
               <div className="destination-swatch" style={{ background: d.color }} />
               <div className="destination-info">
-                <div className="destination-name">{d.name}</div>
-                <div className="destination-dates">{d.startDate} → {d.endDate}</div>
+                {editingId === d.id ? (
+                  <div className="destination-edit-inline" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveEdit(d)
+                        if (e.key === 'Escape') cancelEdit()
+                      }}
+                      autoFocus
+                      className="destination-edit-input"
+                    />
+                    <div className="destination-edit-actions">
+                      <button type="button" className="btn-inline-save" onClick={() => saveEdit(d)}>✓</button>
+                      <button type="button" className="btn-inline-cancel" onClick={cancelEdit}>×</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="destination-name">{d.name}</div>
+                    <div className="destination-dates">{d.startDate} → {d.endDate}</div>
+                  </>
+                )}
               </div>
-              <div className="destination-actions">
+              <div className="destination-actions" onClick={(e) => e.stopPropagation()}>
+                {editingId !== d.id && (
+                  <button
+                    className="btn btn-ghost btn-icon"
+                    onClick={() => startEdit(d)}
+                    title="Editar"
+                  >
+                    ✎
+                  </button>
+                )}
                 <button
                   className="btn btn-ghost btn-icon"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onDeleteDestination(d.id)
-                  }}
+                  onClick={() => handleDelete(d.id)}
                   title="Eliminar"
                 >
                   ×
@@ -91,6 +157,16 @@ export default function SidePanel({
             </div>
           ))}
         </div>
+
+        {destinations.length > 1 && !showForm && (
+          <button
+            className="btn btn-danger"
+            style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}
+            onClick={handleClear}
+          >
+            Limpiar destinos
+          </button>
+        )}
 
         {showForm ? (
           <form onSubmit={handleAdd} style={{ marginTop: 16 }}>
@@ -136,7 +212,7 @@ export default function SidePanel({
         ))}
         <div className="divider" />
         <div style={{ fontSize: 12, color: 'var(--ink-muted)', lineHeight: 1.6 }}>
-          Los iconos sobre cada día del calendario indican los tipos de evento programados. Un mismo día puede tener varios.
+          Los iconos sobre cada dia del calendario indican los tipos de evento programados. Un mismo dia puede tener varios.
         </div>
       </div>
 
