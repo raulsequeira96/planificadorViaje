@@ -134,6 +134,12 @@ input, textarea, select {
   justify-content: center;
 }
 
+.mobile-actions-toggle[aria-expanded='true'] {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
 .theme-toggle {
   min-width: 124px;
   justify-content: center;
@@ -285,7 +291,7 @@ input, textarea, select {
 
 .calendar-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 24px;
   padding-bottom: 16px;
@@ -320,32 +326,44 @@ input, textarea, select {
 
 .calendar-nav {
   display: flex;
-  gap: 4px;
+  gap: 0;
 }
 
 .calendar-nav button {
   width: 34px;
-  height: 34px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: var(--bg);
   font-size: 14px;
   transition: all 0.15s;
+  margin-left: -1px;
 }
+
+.calendar-nav button:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  margin-left: 0;
+}
+
+.calendar-nav button:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
 .calendar-nav button:hover {
   background: var(--ink);
   color: var(--bg-paper);
   border-color: var(--ink);
+  z-index: 1;
 }
 
 .calendar-nav .btn-today {
   width: auto;
-  padding: 0 12px;
+  padding: 0 10px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
