@@ -134,6 +134,12 @@ input, textarea, select {
   justify-content: center;
 }
 
+.mobile-actions-toggle[aria-expanded='true'] {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
 .theme-toggle {
   min-width: 124px;
   justify-content: center;
