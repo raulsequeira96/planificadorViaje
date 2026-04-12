@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import { getStore } from '@netlify/blobs'
+import { getStore, connectLambda } from '@netlify/blobs'
 
 const STORE_NAME = 'trip-planner'
 const STORE_KEY = 'shared-vault'
@@ -70,41 +70,47 @@ export async function handler(event) {
     }
   }
 
+  // Conectar contexto Lambda para que @netlify/blobs funcione
+  connectLambda(event)
   const store = getStore(STORE_NAME)
 
-  if (event.httpMethod === 'GET') {
-    const payload = await store.get(STORE_KEY, { type: 'json' })
-    if (!payload) return response(404, { error: 'Not found' })
-    return response(200, payload)
-  }
-
-  if (event.httpMethod === 'POST') {
-    let parsed
-    try {
-      parsed = parseBody(event)
-    } catch {
-      return response(400, { error: 'Invalid JSON body' })
+  try {
+    if (event.httpMethod === 'GET') {
+      const payload = await store.get(STORE_KEY, { type: 'json' })
+      if (!payload) return response(404, { error: 'Not found' })
+      return response(200, payload)
     }
 
-    if (typeof parsed?.vaultCipher !== 'string' || !parsed.vaultCipher) {
-      return response(400, { error: 'Invalid payload' })
+    if (event.httpMethod === 'POST') {
+      let parsed
+      try {
+        parsed = parseBody(event)
+      } catch {
+        return response(400, { error: 'Invalid JSON body' })
+      }
+
+      if (typeof parsed?.vaultCipher !== 'string' || !parsed.vaultCipher) {
+        return response(400, { error: 'Invalid payload' })
+      }
+
+      const payload = {
+        app: 'trip-planner',
+        version: parsed.version || 1,
+        updatedAt: new Date().toISOString(),
+        vaultCipher: parsed.vaultCipher,
+        authCheckCipher: parsed.authCheckCipher || null
+      }
+
+      await store.setJSON(STORE_KEY, payload)
+      return response(200, { ok: true, updatedAt: payload.updatedAt })
     }
 
-    const payload = {
-      app: 'trip-planner',
-      version: parsed.version || 1,
-      updatedAt: new Date().toISOString(),
-      vaultCipher: parsed.vaultCipher,
-      authCheckCipher: parsed.authCheckCipher || null
+    if (event.httpMethod === 'DELETE') {
+      await store.delete(STORE_KEY)
+      return response(200, { ok: true, deletedAt: new Date().toISOString() })
     }
-
-    await store.setJSON(STORE_KEY, payload)
-    return response(200, { ok: true, updatedAt: payload.updatedAt })
-  }
-
-  if (event.httpMethod === 'DELETE') {
-    await store.delete(STORE_KEY)
-    return response(200, { ok: true, deletedAt: new Date().toISOString() })
+  } catch (err) {
+    return response(500, { error: `Store error: ${err.message}` })
   }
 
   return {
