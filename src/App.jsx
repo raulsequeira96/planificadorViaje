@@ -9,11 +9,14 @@ import {
   extractBackupTimestamp,
   exportVaultBackupJson,
   fetchRemoteVaultBackupJson,
-  hydrateVaultFromHostedJson,
+  getLocalBackupTimestamp,
+  hasLocalBackup,
   importVaultBackupJson,
   loadVault,
   pushRemoteVaultBackupJson,
+  restoreLocalBackup,
   saveVault,
+  snapshotLocalBackup,
   wipeVault
 } from './lib/crypto'
 
@@ -28,7 +31,6 @@ export default function App() {
   const backupInputRef = useRef(null)
   const [syncState, setSyncState] = useState('idle')
   const [lastSyncAt, setLastSyncAt] = useState(null)
-  const canUseStaticFallback = import.meta.env.DEV
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem('theme')
     return savedTheme === 'light' ? 'light' : 'dark'
@@ -51,24 +53,10 @@ export default function App() {
     localStorage.setItem('theme', theme)
   }, [theme])
 
-  // Auto-guardado cifrado ante cualquier cambio de data
+  // Auto-guardado cifrado local ante cualquier cambio de data (sin push remoto)
   useEffect(() => {
     if (!auth || !data) return
-
     saveVault(data, auth.password)
-
-    const syncNow = async () => {
-      setSyncState('syncing')
-      try {
-        const result = await pushRemoteVaultBackupJson(auth.username, auth.password)
-        if (result?.timestamp) setLastSyncAt(result.timestamp)
-        setSyncState('ok')
-      } catch {
-        setSyncState('error')
-      }
-    }
-
-    syncNow()
   }, [data, auth])
 
   if (!auth || !data) {
@@ -169,122 +157,82 @@ export default function App() {
     setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))
   }
 
-  function exportEncryptedJson() {
+  // ─── Sync: subir local al servidor ───
+  async function syncPushLocal() {
     setIsMobileActionsOpen(false)
-    const backupJson = exportVaultBackupJson()
-    if (!backupJson) {
-      showToast('Todavia no hay datos para exportar', 'error')
-      return
-    }
+    if (!confirm('Esto va a subir tu version local al servidor, reemplazando lo que haya en la nube. ¿Continuar?')) return
 
-    const blob = new Blob([backupJson], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'shared-vault.json'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-    showToast('Backup descargado como shared-vault.json', 'success')
-  }
-
-  function requestImportEncryptedJson() {
-    setIsMobileActionsOpen(false)
-    backupInputRef.current?.click()
-  }
-
-  async function handleImportEncryptedJson(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    const shouldImport = confirm('Esto reemplazara el vault actual por el del archivo seleccionado. Queres continuar?')
-    if (!shouldImport) {
-      e.target.value = ''
-      return
-    }
-
-    try {
-      const rawJson = await file.text()
-      importVaultBackupJson(rawJson)
-      const importedTimestamp = extractBackupTimestamp(rawJson)
-      if (importedTimestamp) setLastSyncAt(importedTimestamp)
-      const importedData = loadVault(auth.password)
-      if (!importedData) throw new Error('Vault vacio')
-      setData(importedData)
-      setSelectedDestinationId(null)
-      setSelectedDate(null)
-      showToast('Backup importado correctamente', 'success')
-    } catch {
-      showToast('No se pudo importar el JSON cifrado', 'error')
-    } finally {
-      e.target.value = ''
-    }
-  }
-
-  async function syncFromHostedJson() {
-    setIsMobileActionsOpen(false)
     setSyncState('syncing')
-
     try {
-      const pushed = await pushRemoteVaultBackupJson(auth.username, auth.password)
-      if (pushed?.timestamp) setLastSyncAt(pushed.timestamp)
+      const result = await pushRemoteVaultBackupJson(auth.username, auth.password)
+      if (result?.timestamp) setLastSyncAt(result.timestamp)
       setSyncState('ok')
-      showToast('Sincronizacion completada', 'success')
-      return
-    } catch {
+      showToast('Datos subidos a la nube correctamente', 'success')
+    } catch (err) {
       setSyncState('error')
-      const shouldLoadRemote = confirm(
-        'No se pudo subir tu version local al remoto. Queres intentar cargar la version remota?'
-      )
-      if (!shouldLoadRemote) {
-        return
-      }
+      showToast('No se pudo subir al servidor. Verifica tu conexion y que Netlify tenga las variables TRIP_AUTH_USERNAME y TRIP_AUTH_PASSWORD configuradas.', 'error', { duration: 6000 })
     }
+  }
 
-    let apiFetchFailed = false
+  // ─── Sync: bajar de la nube ───
+  async function syncPullRemote() {
+    setIsMobileActionsOpen(false)
+    if (!confirm('Esto va a reemplazar tus datos locales con los de la nube. Se guardara un backup local antes por si necesitas volver atras. ¿Continuar?')) return
+
+    // Guardo backup local antes de pisar
+    snapshotLocalBackup()
+
+    setSyncState('syncing')
     try {
       const remoteBackup = await fetchRemoteVaultBackupJson(auth.username, auth.password)
-      if (remoteBackup) {
-        importVaultBackupJson(remoteBackup.rawJson)
-        if (remoteBackup.timestamp) setLastSyncAt(remoteBackup.timestamp)
-        const syncedData = loadVault(auth.password)
-        if (!syncedData) throw new Error('Vault vacio')
-        setData(syncedData)
-        setSelectedDestinationId(null)
-        setSelectedDate(null)
-        setSyncState('ok')
-        showToast('Sincronizacion completada desde el servidor remoto', 'success')
+      if (!remoteBackup) {
+        setSyncState('idle')
+        showToast('No hay datos en la nube todavia. Subi tu version local primero.', 'info', { duration: 4000 })
         return
       }
-      // remoteBackup es null → 404: no hay vault en el servidor
-      showToast('No hay vault almacenado en el servidor remoto todavia', 'info')
+      importVaultBackupJson(remoteBackup.rawJson)
+      if (remoteBackup.timestamp) setLastSyncAt(remoteBackup.timestamp)
+      const syncedData = loadVault(auth.password)
+      if (!syncedData) throw new Error('Vault vacio o credenciales no coinciden')
+      setData(syncedData)
+      setSelectedDestinationId(null)
+      setSelectedDate(null)
+      setSyncState('ok')
+      showToast('Datos descargados de la nube. Podes restaurar el backup local si algo salio mal.', 'success', { duration: 4000 })
+    } catch (err) {
+      setSyncState('error')
+      // Restauro el backup si fallo la descarga
+      restoreLocalBackup()
+      showToast('No se pudo descargar de la nube. Verifica tu conexion y credenciales.', 'error', { duration: 5000 })
+    }
+  }
+
+  // ─── Rollback: restaurar backup local ───
+  function rollbackToLocalBackup() {
+    setIsMobileActionsOpen(false)
+    const backupTs = getLocalBackupTimestamp()
+    const label = backupTs
+      ? new Date(backupTs).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+      : 'desconocida'
+
+    if (!confirm(`Esto restaura el backup local guardado el ${label}. Se reemplazaran los datos actuales. ¿Continuar?`)) return
+
+    const restored = restoreLocalBackup()
+    if (!restored) {
+      showToast('No se encontro un backup local para restaurar', 'error')
       return
+    }
+
+    try {
+      const restoredData = loadVault(auth.password)
+      if (!restoredData) throw new Error('Vault vacio')
+      setData(restoredData)
+      setSelectedDestinationId(null)
+      setSelectedDate(null)
+      showToast('Backup local restaurado correctamente', 'success')
     } catch {
-      apiFetchFailed = true
+      showToast('No se pudo restaurar el backup local', 'error')
     }
-
-    // Fallback: archivo estatico solo en desarrollo
-    if (canUseStaticFallback) {
-      const imported = await hydrateVaultFromHostedJson()
-      if (imported) {
-        if (imported.timestamp) setLastSyncAt(imported.timestamp)
-        try {
-          const syncedData = loadVault(auth.password)
-          if (!syncedData) throw new Error('Vault vacio')
-          setData(syncedData)
-          setSelectedDestinationId(null)
-          setSelectedDate(null)
-          showToast('Sincronizacion completada desde shared-vault.json', 'success')
-          return
-        } catch {
-          showToast('El vault remoto no coincide con tus credenciales', 'error')
-          return
-        }
-      }
-    }
-
-    showToast('No se pudo conectar con el servidor remoto. Verifica tu conexion y configuracion de Netlify.', 'error', { duration: 5000 })
   }
 
   const selectedEvents = selectedDate
@@ -318,16 +266,13 @@ export default function App() {
           </button>
 
           <div className={`header-actions-menu ${isMobileActionsOpen ? 'open' : ''}`}>
-            <input
-              ref={backupInputRef}
-              type="file"
-              accept="application/json"
-              style={{ display: 'none' }}
-              onChange={handleImportEncryptedJson}
-            />
-            <button className="btn btn-ghost" onClick={syncFromHostedJson}>⟳ Sincronizar</button>
+            <button className="btn btn-ghost" onClick={syncPushLocal}>⬆ Subir local</button>
+            <button className="btn btn-ghost" onClick={syncPullRemote}>⬇ Bajar nube</button>
+            {hasLocalBackup() && (
+              <button className="btn btn-ghost" onClick={rollbackToLocalBackup}>↩ Restaurar backup</button>
+            )}
             <div className={`sync-badge ${syncState}`}>
-              <span>{syncState === 'syncing' ? 'Sincronizando...' : syncState === 'ok' ? 'Sincronizado' : syncState === 'error' ? 'Sin sync remoto' : 'Sincronizacion inactiva'}</span>
+              <span>{syncState === 'syncing' ? 'Sincronizando...' : syncState === 'ok' ? 'Sincronizado' : syncState === 'error' ? 'Error de sync' : 'Sin sincronizar'}</span>
               <span className="sync-time">{formattedLastSyncAt ? `Ultima sync: ${formattedLastSyncAt}` : 'Ultima sync: -'}</span>
             </div>
             <button className="btn btn-ghost" onClick={() => setShowEmailDialog(true)}>✉ Email de aviso</button>
