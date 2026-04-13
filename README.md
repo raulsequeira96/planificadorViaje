@@ -39,7 +39,7 @@ En desarrollo, la ruta `/api/vault-sync` escribe/lee `public/shared-vault.json` 
 La semilla de cifrado y las credenciales de acceso se inyectan en build time mediante variables de entorno:
 
 ```bash
-TRIP_CRYPTO_SEED="tu-semilla-secreta-larga-y-unica" TRIP_AUTH_USERNAME="madrid" TRIP_AUTH_PASSWORD="madrid" npm run build
+TRIP_CRYPTO_SEED="tu-semilla-secreta-larga-y-unica" TRIP_AUTH_USERNAME="us" TRIP_AUTH_PASSWORD="pass" npm run build
 ```
 
 `TRIP_AUTH_USERNAME` y `TRIP_AUTH_PASSWORD` son obligatorias para build.
