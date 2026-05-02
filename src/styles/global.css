@@ -200,9 +200,19 @@ input, textarea, select {
 }
 
 @media (max-width: 640px) {
-  .app-header { padding: 16px 20px; }
+  .app-header {
+    padding: 18px 20px;
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    gap: 12px;
+  }
+  .app-header > div:first-child {
+    width: 100%;
+  }
   .app-main { padding: 16px; gap: 20px; }
-  .app-header h1 { font-size: 22px; }
+  .app-header h1 { font-size: 24px; }
+  .app-header .subtitle { letter-spacing: 0.2em; }
 
   .header-actions {
     width: 100%;
@@ -1643,4 +1653,280 @@ input, textarea, select {
 .expenses-bydate-value {
   font-weight: 600;
   color: var(--ink);
+}
+
+/* ============ Collapsible card ============ */
+.collapsible-card .panel-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 8px;
+}
+
+.collapsible-card.collapsed .panel-card-header {
+  margin-bottom: 0;
+}
+
+.collapse-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  flex: 1;
+  text-align: left;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 18px;
+}
+
+.collapse-toggle:hover .collapse-icon {
+  color: var(--accent);
+}
+
+.collapse-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  font-size: 12px;
+  color: var(--ink-muted);
+  transition: transform 0.2s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.collapse-icon.open {
+  transform: rotate(0deg);
+}
+
+.collapse-icon:not(.open) {
+  transform: rotate(-90deg);
+}
+
+.collapse-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+.panel-header-extra {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ============ Wallet panel ============ */
+.wallet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wallet-item {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wallet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wallet-name-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wallet-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.wallet-name {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wallet-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.wallet-balance-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.wallet-balance-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-muted);
+}
+
+.wallet-balance {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.wallet-balance-low {
+  color: var(--accent);
+}
+
+.wallet-bar {
+  height: 6px;
+  background: var(--bg-paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.wallet-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.wallet-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  letter-spacing: 0.05em;
+}
+
+/* ============ Paid by control (inside event card) ============ */
+.paid-by-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.paid-by-empty {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+.paid-by-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-paper);
+  border: 1px solid var(--ok);
+  color: var(--ok);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.paid-by-undo {
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.paid-by-undo:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-accept {
+  background: var(--ok);
+  color: white;
+  border: 1px solid var(--ok);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-accept:hover {
+  filter: brightness(0.92);
+}
+
+.paid-by-prompt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-muted);
+}
+
+.paid-by-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+
+.paid-by-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.paid-by-option:hover {
+  background: var(--ink);
+  color: var(--bg-paper);
+  border-color: var(--ink);
+}
+
+.paid-by-cancel {
+  font-size: 11px;
+  padding: 5px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
 }

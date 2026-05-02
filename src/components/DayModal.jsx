@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { EVENT_TYPES, COMMON_FIELDS, getEventStartTime, parseISO } from '../lib/events'
 import EventForm from './EventForm'
 
-export default function DayModal({ date, events, onClose, onSaveEvent, onDeleteEvent, showToast }) {
+export default function DayModal({ date, events, wallets = [], onClose, onSaveEvent, onDeleteEvent, onSetEventPaidBy, showToast }) {
   const [editing, setEditing] = useState(null) // null | 'new' | event
   const dayEvents = [...events].sort((a, b) => getEventStartTime(a).localeCompare(getEventStartTime(b)))
   const dayCost = dayEvents.reduce((acc, e) => {
@@ -52,6 +52,17 @@ export default function DayModal({ date, events, onClose, onSaveEvent, onDeleteE
   function handleDeleteEvent(id) {
     onDeleteEvent(id)
     if (showToast) showToast('Evento eliminado', 'success')
+  }
+
+  function handleAcceptCost(event, walletId) {
+    const w = wallets.find((x) => x.id === walletId)
+    onSetEventPaidBy?.(event.id, walletId)
+    if (showToast && w) showToast(`Descontado de ${w.name}`, 'success')
+  }
+
+  function handleUndoPaid(event) {
+    onSetEventPaidBy?.(event.id, null)
+    if (showToast) showToast('Asignacion revertida', 'info')
   }
 
   return (
@@ -123,6 +134,13 @@ export default function DayModal({ date, events, onClose, onSaveEvent, onDeleteE
                         )}
                       </div>
 
+                      <PaidByControl
+                        event={event}
+                        wallets={wallets}
+                        onAccept={handleAcceptCost}
+                        onUndo={handleUndoPaid}
+                      />
+
                       {event.attachment && (
                         <div className="event-attachment-info">
                           <span className="file-icon">{event.attachment.type?.startsWith('image') ? '🖼️' : '📄'}</span>
@@ -163,6 +181,71 @@ export default function DayModal({ date, events, onClose, onSaveEvent, onDeleteE
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function PaidByControl({ event, wallets, onAccept, onUndo }) {
+  const [selecting, setSelecting] = useState(false)
+  const cost = parseFloat(event.data?.cost)
+  if (!Number.isFinite(cost) || cost <= 0) return null
+
+  const paidById = event.data?.paidBy
+  if (paidById) {
+    const w = wallets.find((x) => x.id === paidById)
+    return (
+      <div className="paid-by-row paid-by-done">
+        <span className="paid-by-badge">
+          <span className="wallet-dot" style={{ background: w?.color || 'var(--ink-muted)' }} />
+          ✓ Pagado por {w?.name || 'billetera eliminada'}
+        </span>
+        <button type="button" className="paid-by-undo" onClick={() => onUndo(event)}>Deshacer</button>
+      </div>
+    )
+  }
+
+  if (wallets.length === 0) {
+    return (
+      <div className="paid-by-row paid-by-empty">
+        Crea una billetera para descontar este gasto
+      </div>
+    )
+  }
+
+  if (selecting && wallets.length > 1) {
+    return (
+      <div className="paid-by-row paid-by-select">
+        <span className="paid-by-prompt">Descontar de:</span>
+        <div className="paid-by-options">
+          {wallets.map((w) => (
+            <button
+              key={w.id}
+              type="button"
+              className="paid-by-option"
+              onClick={() => { onAccept(event, w.id); setSelecting(false) }}
+            >
+              <span className="wallet-dot" style={{ background: w.color }} />
+              {w.name}
+            </button>
+          ))}
+          <button type="button" className="paid-by-cancel" onClick={() => setSelecting(false)}>Cancelar</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="paid-by-row">
+      <button
+        type="button"
+        className="btn btn-accept"
+        onClick={() => {
+          if (wallets.length === 1) onAccept(event, wallets[0].id)
+          else setSelecting(true)
+        }}
+      >
+        ✓ Aceptar gasto (${cost.toLocaleString('es-AR')})
+      </button>
     </div>
   )
 }

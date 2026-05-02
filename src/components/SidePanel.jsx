@@ -8,11 +8,14 @@ import {
 } from '../lib/events'
 import NotesPanel from './NotesPanel'
 import ExpensesPanel from './ExpensesPanel'
+import WalletPanel from './WalletPanel'
+import CollapsibleCard from './CollapsibleCard'
 
 export default function SidePanel({
   destinations,
   events,
   notes,
+  wallets,
   selectedDestinationId,
   onSelectDestination,
   onAddDestination,
@@ -21,6 +24,9 @@ export default function SidePanel({
   onClearDestinations,
   onSaveNote,
   onDeleteNote,
+  onAddWallet,
+  onEditWallet,
+  onDeleteWallet,
   showToast
 }) {
   const [formMode, setFormMode] = useState(null) // null | 'new' | { id, ... } (existing)
@@ -68,12 +74,7 @@ export default function SidePanel({
 
   return (
     <aside className="side-panel">
-      <div className="panel-card">
-        <h3>
-          Destinos
-          <span className="count">{destinations.length}</span>
-        </h3>
-
+      <CollapsibleCard storageKey="destinations" title="Destinos" count={destinations.length}>
         {destinations.length > 0 && (
           <div className="destination-filters">
             <button
@@ -167,7 +168,16 @@ export default function SidePanel({
             + Agregar destino
           </button>
         )}
-      </div>
+      </CollapsibleCard>
+
+      <WalletPanel
+        wallets={wallets}
+        events={events}
+        onAddWallet={onAddWallet}
+        onEditWallet={onEditWallet}
+        onDeleteWallet={onDeleteWallet}
+        showToast={showToast}
+      />
 
       <ExpensesPanel events={events} />
 
@@ -178,8 +188,7 @@ export default function SidePanel({
         showToast={showToast}
       />
 
-      <div className="panel-card">
-        <h3>Leyenda</h3>
+      <CollapsibleCard storageKey="legend" title="Leyenda" defaultOpen={false}>
         {Object.values(EVENT_TYPES).map((t) => (
           <div key={t.id} className="legend-row">
             <span className="icon">{t.icon}</span>
@@ -190,7 +199,7 @@ export default function SidePanel({
         <div style={{ fontSize: 12, color: 'var(--ink-muted)', lineHeight: 1.6 }}>
           Los iconos sobre cada dia del calendario indican los tipos de evento programados. Un mismo dia puede tener varios.
         </div>
-      </div>
+      </CollapsibleCard>
 
       <div className="ornament">✦ ✧ ✦</div>
     </aside>

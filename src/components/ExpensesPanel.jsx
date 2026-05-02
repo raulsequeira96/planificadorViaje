@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { EVENT_TYPES, parseISO } from '../lib/events'
+import CollapsibleCard from './CollapsibleCard'
 
 function formatMoney(value) {
   if (!Number.isFinite(value)) return '$0'
@@ -42,12 +43,7 @@ export default function ExpensesPanel({ events }) {
   const avgPerDay = days ? total / days : 0
 
   return (
-    <div className="panel-card">
-      <h3>
-        Gastos
-        <span className="count">{formatMoney(total)}</span>
-      </h3>
-
+    <CollapsibleCard storageKey="expenses" title="Gastos" count={formatMoney(total)}>
       {total === 0 ? (
         <div className="empty-state">Aun no hay gastos cargados</div>
       ) : (
@@ -109,6 +105,6 @@ export default function ExpensesPanel({ events }) {
           )}
         </>
       )}
-    </div>
+    </CollapsibleCard>
   )
 }

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { uid } from '../lib/events'
+import CollapsibleCard from './CollapsibleCard'
 
 export default function NotesPanel({ notes, onSave, onDelete, showToast }) {
   const [editing, setEditing] = useState(null) // null | 'new' | note
@@ -20,12 +21,7 @@ export default function NotesPanel({ notes, onSave, onDelete, showToast }) {
   }
 
   return (
-    <div className="panel-card">
-      <h3>
-        Notas
-        <span className="count">{notes.length}</span>
-      </h3>
-
+    <CollapsibleCard storageKey="notes" title="Notas" count={notes.length}>
       {notes.length === 0 && !editing && (
         <div className="empty-state">Aun no hay notas</div>
       )}
@@ -96,7 +92,7 @@ export default function NotesPanel({ notes, onSave, onDelete, showToast }) {
           onClose={() => setViewing(null)}
         />
       )}
-    </div>
+    </CollapsibleCard>
   )
 }
 
