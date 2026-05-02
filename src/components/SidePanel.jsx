@@ -1,51 +1,58 @@
-import { useState } from 'react'
-import { EVENT_TYPES, DESTINATION_COLORS, uid } from '../lib/events'
+import { useMemo, useState } from 'react'
+import {
+  EVENT_TYPES,
+  DESTINATION_COLOR_PALETTE,
+  destinationRanges,
+  destinationDateSummary,
+  uid
+} from '../lib/events'
+import NotesPanel from './NotesPanel'
+import ExpensesPanel from './ExpensesPanel'
 
 export default function SidePanel({
   destinations,
   events,
+  notes,
   selectedDestinationId,
   onSelectDestination,
   onAddDestination,
   onDeleteDestination,
   onEditDestination,
   onClearDestinations,
+  onSaveNote,
+  onDeleteNote,
   showToast
 }) {
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', startDate: '', endDate: '' })
-  const [editingId, setEditingId] = useState(null)
-  const [editName, setEditName] = useState('')
+  const [formMode, setFormMode] = useState(null) // null | 'new' | { id, ... } (existing)
 
-  function handleAdd(e) {
-    e.preventDefault()
-    if (!form.name || !form.startDate || !form.endDate) return
-    const color = DESTINATION_COLORS[destinations.length % DESTINATION_COLORS.length]
-    onAddDestination({ id: uid(), ...form, color })
-    setForm({ name: '', startDate: '', endDate: '' })
-    setShowForm(false)
-    if (showToast) showToast('Destino creado', 'success')
+  function startCreate() {
+    setFormMode({
+      id: null,
+      name: '',
+      color: DESTINATION_COLOR_PALETTE[destinations.length % DESTINATION_COLOR_PALETTE.length],
+      ranges: [{ startDate: '', endDate: '' }]
+    })
   }
 
   function startEdit(dest) {
-    setEditingId(dest.id)
-    setEditName(dest.name)
+    const ranges = destinationRanges(dest)
+    setFormMode({
+      id: dest.id,
+      name: dest.name,
+      color: dest.color,
+      ranges: ranges.length ? ranges.map((r) => ({ ...r })) : [{ startDate: '', endDate: '' }]
+    })
   }
 
-  function saveEdit(dest) {
-    const trimmed = editName.trim()
-    if (!trimmed) return
-    if (trimmed !== dest.name) {
-      onEditDestination(dest.id, { name: trimmed })
+  function handleSubmitForm(payload) {
+    if (formMode?.id) {
+      onEditDestination(formMode.id, payload)
       if (showToast) showToast('Destino actualizado', 'success')
+    } else {
+      onAddDestination({ id: uid(), ...payload })
+      if (showToast) showToast('Destino creado', 'success')
     }
-    setEditingId(null)
-    setEditName('')
-  }
-
-  function cancelEdit() {
-    setEditingId(null)
-    setEditName('')
+    setFormMode(null)
   }
 
   function handleClear() {
@@ -90,7 +97,7 @@ export default function SidePanel({
           </div>
         )}
 
-        {destinations.length === 0 && !showForm && (
+        {destinations.length === 0 && !formMode && (
           <div className="empty-state">Aun no hay destinos</div>
         )}
 
@@ -99,7 +106,7 @@ export default function SidePanel({
             <div
               key={d.id}
               className={`destination-item ${selectedDestinationId === d.id ? 'selected' : ''}`}
-              onClick={() => { if (editingId !== d.id) onSelectDestination(d.id) }}
+              onClick={() => onSelectDestination(d.id)}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
@@ -111,41 +118,17 @@ export default function SidePanel({
             >
               <div className="destination-swatch" style={{ background: d.color }} />
               <div className="destination-info">
-                {editingId === d.id ? (
-                  <div className="destination-edit-inline" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="text"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveEdit(d)
-                        if (e.key === 'Escape') cancelEdit()
-                      }}
-                      autoFocus
-                      className="destination-edit-input"
-                    />
-                    <div className="destination-edit-actions">
-                      <button type="button" className="btn-inline-save" onClick={() => saveEdit(d)}>✓</button>
-                      <button type="button" className="btn-inline-cancel" onClick={cancelEdit}>×</button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="destination-name">{d.name}</div>
-                    <div className="destination-dates">{d.startDate} → {d.endDate}</div>
-                  </>
-                )}
+                <div className="destination-name">{d.name}</div>
+                <div className="destination-dates">{destinationDateSummary(d) || 'Sin fechas'}</div>
               </div>
               <div className="destination-actions" onClick={(e) => e.stopPropagation()}>
-                {editingId !== d.id && (
-                  <button
-                    className="btn btn-ghost btn-icon"
-                    onClick={() => startEdit(d)}
-                    title="Editar"
-                  >
-                    ✎
-                  </button>
-                )}
+                <button
+                  className="btn btn-ghost btn-icon"
+                  onClick={() => startEdit(d)}
+                  title="Editar"
+                >
+                  ✎
+                </button>
                 <button
                   className="btn btn-ghost btn-icon"
                   onClick={() => handleDelete(d.id)}
@@ -158,7 +141,7 @@ export default function SidePanel({
           ))}
         </div>
 
-        {destinations.length > 1 && !showForm && (
+        {destinations.length > 1 && !formMode && (
           <button
             className="btn btn-danger"
             style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}
@@ -168,39 +151,32 @@ export default function SidePanel({
           </button>
         )}
 
-        {showForm ? (
-          <form onSubmit={handleAdd} style={{ marginTop: 16 }}>
-            <div className="form-group">
-              <label>Nombre del destino</label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="ej: Tokio, Roma..."
-                autoFocus
-              />
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Desde</label>
-                <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value, endDate: form.endDate && form.endDate < e.target.value ? '' : form.endDate })} />
-              </div>
-              <div className="form-group">
-                <label>Hasta</label>
-                <input type="date" value={form.endDate} min={form.startDate || undefined} onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button type="button" className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancelar</button>
-              <button type="submit" className="btn btn-primary">Agregar</button>
-            </div>
-          </form>
+        {formMode ? (
+          <DestinationForm
+            initial={formMode}
+            isEdit={!!formMode.id}
+            onSubmit={handleSubmitForm}
+            onCancel={() => setFormMode(null)}
+          />
         ) : (
-          <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }} onClick={() => setShowForm(true)}>
+          <button
+            className="btn btn-ghost"
+            style={{ width: '100%', justifyContent: 'center', marginTop: 12 }}
+            onClick={startCreate}
+          >
             + Agregar destino
           </button>
         )}
       </div>
+
+      <ExpensesPanel events={events} />
+
+      <NotesPanel
+        notes={notes}
+        onSave={onSaveNote}
+        onDelete={onDeleteNote}
+        showToast={showToast}
+      />
 
       <div className="panel-card">
         <h3>Leyenda</h3>
@@ -218,5 +194,165 @@ export default function SidePanel({
 
       <div className="ornament">✦ ✧ ✦</div>
     </aside>
+  )
+}
+
+function DestinationForm({ initial, isEdit, onSubmit, onCancel }) {
+  const [name, setName] = useState(initial.name || '')
+  const [color, setColor] = useState(initial.color || DESTINATION_COLOR_PALETTE[0])
+  const [ranges, setRanges] = useState(
+    initial.ranges?.length ? initial.ranges : [{ startDate: '', endDate: '' }]
+  )
+
+  function updateRange(idx, key, value) {
+    setRanges((prev) => prev.map((r, i) => {
+      if (i !== idx) return r
+      const next = { ...r, [key]: value }
+      if (key === 'startDate' && next.endDate && next.endDate < value) {
+        next.endDate = ''
+      }
+      return next
+    }))
+  }
+
+  function addRange() {
+    setRanges((prev) => [...prev, { startDate: '', endDate: '' }])
+  }
+
+  function removeRange(idx) {
+    setRanges((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    const trimmed = name.trim()
+    if (!trimmed) return
+    const validRanges = ranges
+      .filter((r) => r.startDate && r.endDate)
+      .map((r) => ({ startDate: r.startDate, endDate: r.endDate }))
+    if (!validRanges.length) return
+    onSubmit({ name: trimmed, color, ranges: validRanges })
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="destination-form">
+      <div className="form-section-title">{isEdit ? 'Editar destino' : 'Nuevo destino'}</div>
+
+      <div className="form-group">
+        <label>Nombre del destino</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="ej: Tokio, Roma..."
+          autoFocus
+        />
+      </div>
+
+      <div className="form-group">
+        <label>Color</label>
+        <ColorPicker value={color} onChange={setColor} />
+      </div>
+
+      <div className="form-group">
+        <label>Fechas</label>
+        <div className="range-editor">
+          {ranges.map((r, idx) => (
+            <div key={idx} className="range-editor-row">
+              <input
+                type="date"
+                value={r.startDate}
+                onChange={(e) => updateRange(idx, 'startDate', e.target.value)}
+                aria-label="Desde"
+              />
+              <span className="range-arrow">→</span>
+              <input
+                type="date"
+                value={r.endDate}
+                min={r.startDate || undefined}
+                onChange={(e) => updateRange(idx, 'endDate', e.target.value)}
+                aria-label="Hasta"
+              />
+              {ranges.length > 1 && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-icon range-editor-remove"
+                  onClick={() => removeRange(idx)}
+                  title="Quitar rango"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={addRange}
+            style={{ alignSelf: 'flex-start', marginTop: 4 }}
+          >
+            + Agregar otro rango
+          </button>
+        </div>
+      </div>
+
+      <div className="form-actions">
+        <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
+        <button type="submit" className="btn btn-primary">
+          {isEdit ? 'Guardar cambios' : 'Agregar'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function ColorPicker({ value, onChange }) {
+  const [showCustom, setShowCustom] = useState(!DESTINATION_COLOR_PALETTE.includes(value))
+
+  return (
+    <div className="color-picker">
+      <div className="color-swatches">
+        {DESTINATION_COLOR_PALETTE.map((c) => (
+          <button
+            key={c}
+            type="button"
+            className={`color-swatch ${value === c ? 'selected' : ''}`}
+            style={{ background: c }}
+            onClick={() => { onChange(c); setShowCustom(false) }}
+            title={c}
+            aria-label={`Color ${c}`}
+          />
+        ))}
+        <button
+          type="button"
+          className={`color-swatch color-swatch-custom ${showCustom ? 'selected' : ''}`}
+          onClick={() => setShowCustom((s) => !s)}
+          title="Color personalizado"
+          aria-label="Color personalizado"
+        >
+          🎨
+        </button>
+      </div>
+      {showCustom && (
+        <div className="color-custom-row">
+          <input
+            type="color"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="color-custom-input"
+            aria-label="Selector de color"
+          />
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="#RRGGBB"
+            className="color-hex-input"
+            aria-label="Codigo de color"
+          />
+          <span className="color-preview" style={{ background: value }} />
+        </div>
+      )}
+    </div>
   )
 }

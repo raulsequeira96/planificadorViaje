@@ -5,6 +5,10 @@ import EventForm from './EventForm'
 export default function DayModal({ date, events, onClose, onSaveEvent, onDeleteEvent, showToast }) {
   const [editing, setEditing] = useState(null) // null | 'new' | event
   const dayEvents = [...events].sort((a, b) => getEventStartTime(a).localeCompare(getEventStartTime(b)))
+  const dayCost = dayEvents.reduce((acc, e) => {
+    const c = parseFloat(e.data?.cost)
+    return Number.isFinite(c) && c > 0 ? acc + c : acc
+  }, 0)
 
   const d = parseISO(date)
   const formatted = d.toLocaleDateString('es-AR', {
@@ -56,7 +60,10 @@ export default function DayModal({ date, events, onClose, onSaveEvent, onDeleteE
         <div className="modal-header">
           <div>
             <h2>{formatted}</h2>
-            <div className="date-sub">{dayEvents.length} {dayEvents.length === 1 ? 'evento' : 'eventos'}</div>
+            <div className="date-sub">
+              {dayEvents.length} {dayEvents.length === 1 ? 'evento' : 'eventos'}
+              {dayCost > 0 && <> · Gasto del dia: ${dayCost.toLocaleString('es-AR')}</>}
+            </div>
           </div>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>

@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react'
-import { EVENT_TYPES, formatDateISO, monthLabel, mondayFirstIndex, parseISO } from '../lib/events'
+import {
+  EVENT_TYPES,
+  destinationRanges,
+  formatDateISO,
+  monthLabel,
+  mondayFirstIndex,
+  parseISO
+} from '../lib/events'
 
 function withHexAlpha(color, alphaHex) {
   if (typeof color !== 'string') return color
@@ -12,11 +19,22 @@ function nearestUpcomingMonth(destinations) {
   today.setHours(0, 0, 0, 0)
   let nearest = null
   for (const d of destinations) {
-    if (!d.startDate) continue
-    const start = parseISO(d.startDate)
-    if (start >= today && (!nearest || start < nearest)) nearest = start
+    for (const r of destinationRanges(d)) {
+      if (!r.startDate) continue
+      const start = parseISO(r.startDate)
+      if (start >= today && (!nearest || start < nearest)) nearest = start
+    }
   }
   return nearest
+}
+
+function formatCostShort(value) {
+  if (value >= 1000) {
+    const k = value / 1000
+    const formatted = k >= 10 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, '')
+    return `$${formatted}k`
+  }
+  return `$${Math.round(value)}`
 }
 
 export default function Calendar({ destinations, events, selectedDestinationId, onDayClick }) {
@@ -39,7 +57,16 @@ export default function Calendar({ destinations, events, selectedDestinationId, 
     return map
   }, [events])
 
-  // Ahora almacena un ARRAY de destinos por fecha para mostrar superposiciones
+  const costByDate = useMemo(() => {
+    const map = {}
+    for (const e of events) {
+      const c = parseFloat(e.data?.cost)
+      if (!Number.isFinite(c) || c <= 0) continue
+      map[e.date] = (map[e.date] || 0) + c
+    }
+    return map
+  }, [events])
+
   const destinationsByDate = useMemo(() => {
     const map = {}
     const visibleDestinations = selectedDestinationId
@@ -47,15 +74,16 @@ export default function Calendar({ destinations, events, selectedDestinationId, 
       : destinations
 
     for (const d of visibleDestinations) {
-      if (!d.startDate || !d.endDate) continue
-      const start = parseISO(d.startDate)
-      const end = parseISO(d.endDate)
-      const cur = new Date(start)
-      while (cur <= end) {
-        const key = formatDateISO(cur)
-        if (!map[key]) map[key] = []
-        map[key].push(d)
-        cur.setDate(cur.getDate() + 1)
+      for (const range of destinationRanges(d)) {
+        const start = parseISO(range.startDate)
+        const end = parseISO(range.endDate)
+        const cur = new Date(start)
+        while (cur <= end) {
+          const key = formatDateISO(cur)
+          if (!map[key]) map[key] = []
+          if (!map[key].some((x) => x.id === d.id)) map[key].push(d)
+          cur.setDate(cur.getDate() + 1)
+        }
       }
     }
     return map
@@ -116,6 +144,7 @@ export default function Calendar({ destinations, events, selectedDestinationId, 
           const selectedBackground = isSelectedDestinationDay
             ? `linear-gradient(180deg, ${withHexAlpha(dest.color, '2b')}, var(--bg-paper) 76%)`
             : undefined
+          const dayCost = costByDate[iso] || 0
 
           return (
             <div
@@ -124,7 +153,6 @@ export default function Calendar({ destinations, events, selectedDestinationId, 
               style={isSelectedDestinationDay ? { '--destination-color': dest.color, background: selectedBackground } : undefined}
               onClick={() => onDayClick(iso)}
             >
-              {/* Barras de destino: una por cada destino en ese día */}
               {dests.length === 1 && (
                 <div className="range-bar" style={{ background: dests[0].color }} />
               )}
@@ -142,6 +170,11 @@ export default function Calendar({ destinations, events, selectedDestinationId, 
                   {dests.map((d) => (
                     <span key={d.id} className="dest-dot" style={{ background: d.color }} title={d.name} />
                   ))}
+                </div>
+              )}
+              {dayCost > 0 && (
+                <div className="day-cost" title={`Gasto del dia: $${dayCost.toLocaleString('es-AR')}`}>
+                  {formatCostShort(dayCost)}
                 </div>
               )}
               {uniqueIcons.length > 0 && (
