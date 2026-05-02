@@ -153,13 +153,25 @@ export function destinationDateSummary(dest) {
     .join(' · ')
 }
 
+// Calcula gastos descontados de una billetera y saldo disponible
+export function computeWalletBalance(wallet, events) {
+  let spent = 0
+  for (const e of events || []) {
+    if (e.data?.paidBy !== wallet.id) continue
+    const c = parseFloat(e.data?.cost)
+    if (Number.isFinite(c) && c > 0) spent += c
+  }
+  const initial = Number(wallet.initialBalance) || 0
+  return { spent, balance: initial - spent }
+}
+
 // Migra datos viejos al formato actual:
 // - destinations: startDate/endDate -> ranges:[{startDate,endDate}]
 // - eventos hotel: price -> cost
-// - notes: array vacio si no existe
+// - notes / wallets: array vacio si no existen
 export function migrateData(data) {
   if (!data || typeof data !== 'object') {
-    return { destinations: [], events: [], notes: [] }
+    return { destinations: [], events: [], notes: [], wallets: [] }
   }
   const destinations = (data.destinations || []).map((d) => {
     let ranges = Array.isArray(d.ranges) && d.ranges.length
@@ -184,5 +196,13 @@ export function migrateData(data) {
     return { ...e, data: evData }
   })
   const notes = Array.isArray(data.notes) ? data.notes : []
-  return { destinations, events, notes }
+  const wallets = Array.isArray(data.wallets)
+    ? data.wallets.map((w) => ({
+      id: w.id,
+      name: w.name,
+      color: w.color || '#3b82f6',
+      initialBalance: Number(w.initialBalance) || 0
+    }))
+    : []
+  return { destinations, events, notes, wallets }
 }

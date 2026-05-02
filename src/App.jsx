@@ -95,6 +95,40 @@ export default function App() {
     })
   }
 
+  function addWallet(wallet) {
+    setData({ ...data, wallets: [...(data.wallets || []), wallet] })
+  }
+
+  function editWallet(id, changes) {
+    setData({
+      ...data,
+      wallets: (data.wallets || []).map((w) => w.id === id ? { ...w, ...changes } : w)
+    })
+  }
+
+  function deleteWallet(id) {
+    const wallets = (data.wallets || []).filter((w) => w.id !== id)
+    const events = data.events.map((e) => {
+      if (e.data?.paidBy === id) {
+        const { paidBy, ...rest } = e.data
+        return { ...e, data: rest }
+      }
+      return e
+    })
+    setData({ ...data, wallets, events })
+  }
+
+  function setEventPaidBy(eventId, walletId) {
+    const events = data.events.map((e) => {
+      if (e.id !== eventId) return e
+      const data2 = { ...(e.data || {}) }
+      if (walletId) data2.paidBy = walletId
+      else delete data2.paidBy
+      return { ...e, data: data2 }
+    })
+    setData({ ...data, events })
+  }
+
   function saveNote(note) {
     const notes = Array.isArray(data.notes) ? data.notes : []
     const exists = notes.find((n) => n.id === note.id)
@@ -312,6 +346,7 @@ export default function App() {
           destinations={data.destinations}
           events={data.events}
           notes={data.notes || []}
+          wallets={data.wallets || []}
           selectedDestinationId={selectedDestinationId}
           onSelectDestination={setSelectedDestinationId}
           onAddDestination={addDestination}
@@ -320,6 +355,9 @@ export default function App() {
           onClearDestinations={clearDestinations}
           onSaveNote={saveNote}
           onDeleteNote={deleteNote}
+          onAddWallet={addWallet}
+          onEditWallet={editWallet}
+          onDeleteWallet={deleteWallet}
           showToast={showToast}
         />
       </main>
@@ -328,9 +366,11 @@ export default function App() {
         <DayModal
           date={selectedDate}
           events={selectedEvents}
+          wallets={data.wallets || []}
           onClose={() => setSelectedDate(null)}
           onSaveEvent={saveEvent}
           onDeleteEvent={deleteEvent}
+          onSetEventPaidBy={setEventPaidBy}
           showToast={showToast}
         />
       )}
