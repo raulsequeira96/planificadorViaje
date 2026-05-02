@@ -1228,3 +1228,419 @@ input, textarea, select {
   margin: 8px 0;
   letter-spacing: 0.4em;
 }
+
+/* ============ Destination form ============ */
+.destination-form {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+
+.form-section-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--ink-muted);
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+/* ============ Color picker ============ */
+.color-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.color-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
+  gap: 6px;
+}
+
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.color-swatch:hover {
+  transform: scale(1.08);
+  border-color: var(--ink-muted);
+}
+
+.color-swatch.selected {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px var(--bg-paper) inset;
+}
+
+.color-swatch-custom {
+  background: linear-gradient(135deg, #f43f5e, #f59e0b, #22c55e, #3b82f6, #a855f7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: white;
+}
+
+.color-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-custom-input {
+  width: 40px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.color-hex-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-paper);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.color-preview {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+}
+
+/* ============ Range editor ============ */
+.range-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.range-editor-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-editor-row input[type="date"] {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: 13px;
+}
+
+.range-editor-row input[type="date"]:focus {
+  outline: none;
+  border-color: var(--ink);
+  background: var(--bg-paper);
+}
+
+.range-arrow {
+  font-family: var(--font-mono);
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+
+.range-editor-remove {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+
+@media (max-width: 480px) {
+  .range-editor-row {
+    flex-wrap: wrap;
+  }
+  .range-editor-row input[type="date"] {
+    flex: 1 1 calc(50% - 16px);
+    min-width: 0;
+  }
+  .range-arrow { display: none; }
+}
+
+/* ============ Day cost in calendar ============ */
+.day-cost {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ok);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  padding: 1px 5px;
+  align-self: flex-start;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 640px) {
+  .day-cost { font-size: 9px; padding: 1px 4px; }
+}
+
+/* ============ Notes panel ============ */
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.note-item:hover {
+  border-color: var(--ink);
+}
+
+.note-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.note-title {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.note-preview {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.note-attachments-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  margin-top: 4px;
+  letter-spacing: 0.05em;
+}
+
+.note-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ============ Note editor / viewer ============ */
+.note-attachments-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-attachment-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.note-attachment-chip .file-icon { font-size: 16px; }
+.note-attachment-chip .file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-attachment-chip .btn-icon {
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+.note-view-description {
+  white-space: pre-wrap;
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+
+.note-view-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.note-view-attachment {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  padding: 10px;
+}
+
+.note-view-image {
+  max-width: 100%;
+  max-height: 400px;
+  display: block;
+  margin: 0 auto;
+  border-radius: var(--radius-sm);
+}
+
+.note-view-pdf {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 12px;
+}
+
+.note-view-pdf .file-icon { font-size: 32px; }
+.note-view-pdf .file-name { font-size: 14px; }
+
+.note-view-attachment-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.note-view-attachment-actions .btn {
+  font-size: 12px;
+  padding: 5px 12px;
+}
+
+/* ============ Expenses panel ============ */
+.expenses-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.expenses-summary-item {
+  padding: 10px 8px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.expenses-summary-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-muted);
+  margin-bottom: 4px;
+}
+
+.expenses-summary-value {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.expenses-bytype {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.expenses-bytype-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.expenses-bytype-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.expenses-bytype-bar {
+  height: 6px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.expenses-bytype-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.expenses-bydate {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 8px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.expenses-bydate-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.expenses-bydate-row:last-child {
+  border-bottom: none;
+}
+
+.expenses-bydate-day {
+  font-family: var(--font-mono);
+  text-transform: capitalize;
+  color: var(--ink-soft);
+}
+
+.expenses-bydate-value {
+  font-weight: 600;
+  color: var(--ink);
+}

@@ -4,6 +4,7 @@ import Calendar from './components/Calendar'
 import SidePanel from './components/SidePanel'
 import DayModal from './components/DayModal'
 import ToastContainer from './components/Toast'
+import { migrateData } from './lib/events'
 import {
   clearRemoteVaultBackup,
   extractBackupTimestamp,
@@ -60,7 +61,7 @@ export default function App() {
   }, [data, auth])
 
   if (!auth || !data) {
-    return <AuthScreen onUnlock={(sessionAuth, d) => { setAuth(sessionAuth); setData(d) }} />
+    return <AuthScreen onUnlock={(sessionAuth, d) => { setAuth(sessionAuth); setData(migrateData(d)) }} />
   }
 
   function addDestination(dest) {
@@ -92,6 +93,21 @@ export default function App() {
         showToast('Destinos restaurados', 'success')
       }
     })
+  }
+
+  function saveNote(note) {
+    const notes = Array.isArray(data.notes) ? data.notes : []
+    const exists = notes.find((n) => n.id === note.id)
+    const next = exists
+      ? notes.map((n) => n.id === note.id ? note : n)
+      : [...notes, note]
+    setData({ ...data, notes: next })
+  }
+
+  function deleteNote(id) {
+    if (!confirm('¿Eliminar esta nota?')) return
+    const notes = (data.notes || []).filter((n) => n.id !== id)
+    setData({ ...data, notes })
   }
 
   function saveEvent(event) {
@@ -194,7 +210,7 @@ export default function App() {
       if (remoteBackup.timestamp) setLastSyncAt(remoteBackup.timestamp)
       const syncedData = loadVault(auth.password)
       if (!syncedData) throw new Error('Vault vacio o credenciales no coinciden')
-      setData(syncedData)
+      setData(migrateData(syncedData))
       setSelectedDestinationId(null)
       setSelectedDate(null)
       setSyncState('ok')
@@ -226,7 +242,7 @@ export default function App() {
     try {
       const restoredData = loadVault(auth.password)
       if (!restoredData) throw new Error('Vault vacio')
-      setData(restoredData)
+      setData(migrateData(restoredData))
       setSelectedDestinationId(null)
       setSelectedDate(null)
       showToast('Backup local restaurado correctamente', 'success')
@@ -295,12 +311,15 @@ export default function App() {
         <SidePanel
           destinations={data.destinations}
           events={data.events}
+          notes={data.notes || []}
           selectedDestinationId={selectedDestinationId}
           onSelectDestination={setSelectedDestinationId}
           onAddDestination={addDestination}
           onDeleteDestination={deleteDestination}
           onEditDestination={editDestination}
           onClearDestinations={clearDestinations}
+          onSaveNote={saveNote}
+          onDeleteNote={deleteNote}
           showToast={showToast}
         />
       </main>

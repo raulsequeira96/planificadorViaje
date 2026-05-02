@@ -45,8 +45,7 @@ export const EVENT_TYPES = {
       { key: 'name', label: 'Nombre', type: 'text' },
       { key: 'location', label: 'Ubicación', type: 'text' },
       { key: 'checkIn', label: 'Check-in', type: 'time' },
-      { key: 'checkOut', label: 'Check-out', type: 'time' },
-      { key: 'price', label: 'Precio', type: 'number' }
+      { key: 'checkOut', label: 'Check-out', type: 'time' }
     ]
   },
   activity: {
@@ -120,8 +119,70 @@ export function mondayFirstIndex(date) {
   return d === 0 ? 6 : d - 1
 }
 
-// Paleta para destinos
-export const DESTINATION_COLORS = [
-  '#c2410c', '#0369a1', '#15803d', '#7c2d12', '#6d28d9',
-  '#be185d', '#0f766e', '#a16207', '#1e40af', '#b91c1c'
+// Paleta amplia para destinos
+export const DESTINATION_COLOR_PALETTE = [
+  '#dc2626', '#ea580c', '#f59e0b', '#eab308', '#84cc16',
+  '#22c55e', '#10b981', '#0d9488', '#06b6d4', '#0ea5e9',
+  '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
+  '#ec4899', '#f43f5e', '#be185d', '#7c2d12', '#a16207',
+  '#475569', '#1f2937', '#0f172a', '#78350f', '#365314'
 ]
+
+export const DESTINATION_COLORS = DESTINATION_COLOR_PALETTE
+
+export function destinationRanges(dest) {
+  if (!dest) return []
+  if (Array.isArray(dest.ranges) && dest.ranges.length) {
+    return dest.ranges.filter((r) => r && r.startDate && r.endDate)
+  }
+  if (dest.startDate && dest.endDate) {
+    return [{ startDate: dest.startDate, endDate: dest.endDate }]
+  }
+  return []
+}
+
+export function destinationCoversDate(dest, iso) {
+  return destinationRanges(dest).some((r) => iso >= r.startDate && iso <= r.endDate)
+}
+
+export function destinationDateSummary(dest) {
+  const ranges = destinationRanges(dest)
+  if (!ranges.length) return ''
+  return ranges
+    .map((r) => `${r.startDate} → ${r.endDate}`)
+    .join(' · ')
+}
+
+// Migra datos viejos al formato actual:
+// - destinations: startDate/endDate -> ranges:[{startDate,endDate}]
+// - eventos hotel: price -> cost
+// - notes: array vacio si no existe
+export function migrateData(data) {
+  if (!data || typeof data !== 'object') {
+    return { destinations: [], events: [], notes: [] }
+  }
+  const destinations = (data.destinations || []).map((d) => {
+    let ranges = Array.isArray(d.ranges) && d.ranges.length
+      ? d.ranges.filter((r) => r && r.startDate && r.endDate)
+      : []
+    if (!ranges.length && d.startDate && d.endDate) {
+      ranges = [{ startDate: d.startDate, endDate: d.endDate }]
+    }
+    return {
+      id: d.id,
+      name: d.name,
+      color: d.color,
+      ranges
+    }
+  })
+  const events = (data.events || []).map((e) => {
+    const evData = { ...(e.data || {}) }
+    if (e.type === 'hotel' && evData.price != null && evData.price !== '' && (evData.cost == null || evData.cost === '')) {
+      evData.cost = evData.price
+    }
+    delete evData.price
+    return { ...e, data: evData }
+  })
+  const notes = Array.isArray(data.notes) ? data.notes : []
+  return { destinations, events, notes }
+}
