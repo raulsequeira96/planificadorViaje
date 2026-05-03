@@ -153,13 +153,30 @@ export function destinationDateSummary(dest) {
     .join(' · ')
 }
 
+// Devuelve los splits normalizados de un evento (array de {walletId, amount})
+// Soporta el formato viejo (paidBy = string)
+export function getEventSplits(event) {
+  const pb = event?.data?.paidBy
+  if (!pb) return []
+  if (Array.isArray(pb)) {
+    return pb
+      .map((s) => ({ walletId: s.walletId, amount: parseFloat(s.amount) }))
+      .filter((s) => s.walletId && Number.isFinite(s.amount) && s.amount > 0)
+  }
+  if (typeof pb === 'string') {
+    const cost = parseFloat(event.data?.cost)
+    return [{ walletId: pb, amount: Number.isFinite(cost) ? cost : 0 }]
+  }
+  return []
+}
+
 // Calcula gastos descontados de una billetera y saldo disponible
 export function computeWalletBalance(wallet, events) {
   let spent = 0
   for (const e of events || []) {
-    if (e.data?.paidBy !== wallet.id) continue
-    const c = parseFloat(e.data?.cost)
-    if (Number.isFinite(c) && c > 0) spent += c
+    for (const s of getEventSplits(e)) {
+      if (s.walletId === wallet.id) spent += s.amount
+    }
   }
   const initial = Number(wallet.initialBalance) || 0
   return { spent, balance: initial - spent }
@@ -193,6 +210,12 @@ export function migrateData(data) {
       evData.cost = evData.price
     }
     delete evData.price
+    if (typeof evData.paidBy === 'string' && evData.paidBy) {
+      const cost = parseFloat(evData.cost)
+      evData.paidBy = [{ walletId: evData.paidBy, amount: Number.isFinite(cost) ? cost : 0 }]
+    } else if (!Array.isArray(evData.paidBy)) {
+      delete evData.paidBy
+    }
     return { ...e, data: evData }
   })
   const notes = Array.isArray(data.notes) ? data.notes : []
