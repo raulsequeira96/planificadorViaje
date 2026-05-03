@@ -38,8 +38,10 @@ export default function WalletPanel({ wallets, events, onAddWallet, onEditWallet
         {wallets.map((w) => {
           const { spent, balance } = computeWalletBalance(w, events)
           const initial = Number(w.initialBalance) || 0
-          const pct = initial > 0 ? Math.min(100, (spent / initial) * 100) : 0
           const isLow = balance < 0
+          const availablePct = initial > 0
+            ? Math.max(0, Math.min(100, (balance / initial) * 100))
+            : (initial === 0 && spent === 0 ? 100 : 0)
           return (
             <div key={w.id} className="wallet-item">
               <div className="wallet-head">
@@ -56,7 +58,9 @@ export default function WalletPanel({ wallets, events, onAddWallet, onEditWallet
                 <span className="wallet-balance-label">Disponible</span>
                 <span className={`wallet-balance ${isLow ? 'wallet-balance-low' : ''}`}>{fmt(balance)}</span>
               </div>
-              <div className="wallet-bar"><div className="wallet-bar-fill" style={{ width: `${pct}%`, background: w.color }} /></div>
+              <div className={`wallet-bar ${isLow ? 'wallet-bar-overdrawn' : ''}`}>
+                <div className="wallet-bar-fill" style={{ width: `${availablePct}%` }} />
+              </div>
               <div className="wallet-meta">
                 <span>Inicial: {fmt(initial)}</span>
                 <span>Gastado: {fmt(spent)}</span>

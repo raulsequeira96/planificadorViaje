@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { EVENT_TYPES, COMMON_FIELDS, getEventStartTime, parseISO } from '../lib/events'
+import { useMemo, useState } from 'react'
+import { EVENT_TYPES, COMMON_FIELDS, getEventStartTime, getEventSplits, parseISO } from '../lib/events'
 import EventForm from './EventForm'
 
 export default function DayModal({ date, events, wallets = [], onClose, onSaveEvent, onDeleteEvent, onSetEventPaidBy, showToast }) {
@@ -54,10 +54,15 @@ export default function DayModal({ date, events, wallets = [], onClose, onSaveEv
     if (showToast) showToast('Evento eliminado', 'success')
   }
 
-  function handleAcceptCost(event, walletId) {
-    const w = wallets.find((x) => x.id === walletId)
-    onSetEventPaidBy?.(event.id, walletId)
-    if (showToast && w) showToast(`Descontado de ${w.name}`, 'success')
+  function handleAcceptSplits(event, splits) {
+    onSetEventPaidBy?.(event.id, splits)
+    if (showToast) {
+      const names = splits
+        .map((s) => wallets.find((w) => w.id === s.walletId)?.name)
+        .filter(Boolean)
+        .join(', ')
+      showToast(`Descontado de ${names || 'billetera'}`, 'success')
+    }
   }
 
   function handleUndoPaid(event) {
@@ -137,7 +142,7 @@ export default function DayModal({ date, events, wallets = [], onClose, onSaveEv
                       <PaidByControl
                         event={event}
                         wallets={wallets}
-                        onAccept={handleAcceptCost}
+                        onAcceptSplits={handleAcceptSplits}
                         onUndo={handleUndoPaid}
                       />
 
@@ -185,20 +190,31 @@ export default function DayModal({ date, events, wallets = [], onClose, onSaveEv
   )
 }
 
-function PaidByControl({ event, wallets, onAccept, onUndo }) {
+function fmtMoney(n) {
+  const v = Number(n) || 0
+  return `$${v.toLocaleString('es-AR', { maximumFractionDigits: 2 })}`
+}
+
+function PaidByControl({ event, wallets, onAcceptSplits, onUndo }) {
   const [selecting, setSelecting] = useState(false)
   const cost = parseFloat(event.data?.cost)
   if (!Number.isFinite(cost) || cost <= 0) return null
 
-  const paidById = event.data?.paidBy
-  if (paidById) {
-    const w = wallets.find((x) => x.id === paidById)
+  const splits = getEventSplits(event)
+  if (splits.length > 0) {
     return (
       <div className="paid-by-row paid-by-done">
-        <span className="paid-by-badge">
-          <span className="wallet-dot" style={{ background: w?.color || 'var(--ink-muted)' }} />
-          ✓ Pagado por {w?.name || 'billetera eliminada'}
-        </span>
+        <div className="paid-by-badges">
+          {splits.map((s, i) => {
+            const w = wallets.find((x) => x.id === s.walletId)
+            return (
+              <span key={i} className="paid-by-badge">
+                <span className="wallet-dot" style={{ background: w?.color || 'var(--ink-muted)' }} />
+                {w?.name || 'billetera eliminada'} · {fmtMoney(s.amount)}
+              </span>
+            )
+          })}
+        </div>
         <button type="button" className="paid-by-undo" onClick={() => onUndo(event)}>Deshacer</button>
       </div>
     )
@@ -212,25 +228,14 @@ function PaidByControl({ event, wallets, onAccept, onUndo }) {
     )
   }
 
-  if (selecting && wallets.length > 1) {
+  if (selecting) {
     return (
-      <div className="paid-by-row paid-by-select">
-        <span className="paid-by-prompt">Descontar de:</span>
-        <div className="paid-by-options">
-          {wallets.map((w) => (
-            <button
-              key={w.id}
-              type="button"
-              className="paid-by-option"
-              onClick={() => { onAccept(event, w.id); setSelecting(false) }}
-            >
-              <span className="wallet-dot" style={{ background: w.color }} />
-              {w.name}
-            </button>
-          ))}
-          <button type="button" className="paid-by-cancel" onClick={() => setSelecting(false)}>Cancelar</button>
-        </div>
-      </div>
+      <SplitSelector
+        cost={cost}
+        wallets={wallets}
+        onConfirm={(splits) => { onAcceptSplits(event, splits); setSelecting(false) }}
+        onCancel={() => setSelecting(false)}
+      />
     )
   }
 
@@ -240,12 +245,130 @@ function PaidByControl({ event, wallets, onAccept, onUndo }) {
         type="button"
         className="btn btn-accept"
         onClick={() => {
-          if (wallets.length === 1) onAccept(event, wallets[0].id)
+          if (wallets.length === 1) onAcceptSplits(event, [{ walletId: wallets[0].id, amount: cost }])
           else setSelecting(true)
         }}
       >
-        ✓ Aceptar gasto (${cost.toLocaleString('es-AR')})
+        ✓ Aceptar gasto ({fmtMoney(cost)})
       </button>
+    </div>
+  )
+}
+
+function SplitSelector({ cost, wallets, onConfirm, onCancel }) {
+  const [selected, setSelected] = useState({}) // { walletId: true }
+  const [amounts, setAmounts] = useState({}) // { walletId: string }
+  const [touched, setTouched] = useState({}) // { walletId: true } when user typed an amount
+
+  const selectedIds = useMemo(
+    () => wallets.map((w) => w.id).filter((id) => selected[id]),
+    [selected, wallets]
+  )
+
+  // Reparte el costo en partes iguales entre los seleccionados, salvo los tocados manualmente
+  const effectiveAmounts = useMemo(() => {
+    const result = {}
+    if (selectedIds.length === 0) return result
+    let remaining = cost
+    const untouched = []
+    for (const id of selectedIds) {
+      if (touched[id]) {
+        const v = parseFloat(amounts[id])
+        result[id] = Number.isFinite(v) ? v : 0
+        remaining -= result[id]
+      } else {
+        untouched.push(id)
+      }
+    }
+    if (untouched.length > 0) {
+      const share = remaining / untouched.length
+      for (const id of untouched) result[id] = share
+    }
+    return result
+  }, [selectedIds, touched, amounts, cost])
+
+  const sum = useMemo(
+    () => Object.values(effectiveAmounts).reduce((a, b) => a + b, 0),
+    [effectiveAmounts]
+  )
+  const diff = +(cost - sum).toFixed(2)
+
+  function toggle(id) {
+    setSelected((prev) => ({ ...prev, [id]: !prev[id] }))
+    setTouched((prev) => ({ ...prev, [id]: false }))
+  }
+
+  function changeAmount(id, value) {
+    setAmounts((prev) => ({ ...prev, [id]: value }))
+    setTouched((prev) => ({ ...prev, [id]: true }))
+  }
+
+  function handleConfirm() {
+    const splits = selectedIds
+      .map((id) => ({ walletId: id, amount: +(effectiveAmounts[id] || 0).toFixed(2) }))
+      .filter((s) => s.amount > 0)
+    if (splits.length === 0) return
+    onConfirm(splits)
+  }
+
+  return (
+    <div className="paid-by-row paid-by-split">
+      <div className="paid-by-prompt">Descontar de (podes elegir varios):</div>
+      <div className="split-list">
+        {wallets.map((w) => {
+          const isSelected = !!selected[w.id]
+          const value = isSelected
+            ? (touched[w.id]
+              ? (amounts[w.id] ?? '')
+              : (effectiveAmounts[w.id]?.toFixed(2) ?? ''))
+            : ''
+          return (
+            <div key={w.id} className={`split-row ${isSelected ? 'selected' : ''}`}>
+              <label className="split-row-label">
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggle(w.id)}
+                />
+                <span className="wallet-dot" style={{ background: w.color }} />
+                <span className="split-row-name">{w.name}</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className="split-amount"
+                value={value}
+                onChange={(e) => changeAmount(w.id, e.target.value)}
+                onFocus={(e) => {
+                  if (isSelected && !touched[w.id]) {
+                    setAmounts((prev) => ({ ...prev, [w.id]: effectiveAmounts[w.id]?.toFixed(2) ?? '' }))
+                  }
+                }}
+                disabled={!isSelected}
+                placeholder="0"
+              />
+            </div>
+          )
+        })}
+      </div>
+      <div className={`split-summary ${Math.abs(diff) > 0.01 ? 'split-summary-mismatch' : ''}`}>
+        <span>Total asignado: {fmtMoney(sum)} / {fmtMoney(cost)}</span>
+        {Math.abs(diff) > 0.01 && (
+          <span className="split-diff">Faltan {fmtMoney(diff)}</span>
+        )}
+      </div>
+      <div className="split-actions">
+        <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
+        <button
+          type="button"
+          className="btn btn-accept"
+          onClick={handleConfirm}
+          disabled={selectedIds.length === 0 || sum <= 0}
+        >
+          ✓ Confirmar
+        </button>
+      </div>
     </div>
   )
 }
