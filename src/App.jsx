@@ -303,7 +303,7 @@ export default function App() {
       <header className="app-header">
         <div>
           <h1>Itinerario</h1>
-          <div className="subtitle">Planificador de viaje</div>
+          <div className="subtitle">Planificador de viaje :)</div>
         </div>
         <div className="header-actions">
           <button
