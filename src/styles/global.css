@@ -38,7 +38,6 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   touch-action: pan-x pan-y;
-  overflow-x: hidden;
 }
 
 body {
@@ -53,7 +52,6 @@ body {
     radial-gradient(circle at 80% 80%, var(--bg-glow-2), transparent 40%);
   background-attachment: fixed;
   transition: background-color 0.25s ease, color 0.25s ease;
-  overflow-x: hidden;
 }
 
 input, textarea, select {
@@ -97,7 +95,6 @@ input, textarea, select {
   display: flex;
   flex-direction: column;
   width: 100%;
-  overflow-x: hidden;
 }
 
 .app-header {
