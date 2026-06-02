@@ -207,7 +207,7 @@ input, textarea, select {
 
 @media (max-width: 1024px) {
   .app-main {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -608,6 +608,7 @@ input, textarea, select {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
 }
 
 .panel-card {
