@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 import CryptoJS from 'crypto-js'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -133,7 +134,36 @@ function localVaultSyncPlugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), localVaultSyncPlugin()],
+  plugins: [
+    react(),
+    localVaultSyncPlugin(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['iconoDeApp.png', 'icons/apple-touch-icon.png'],
+      manifest: {
+        name: 'Itinerario — Planificador de viaje',
+        short_name: 'Itinerario',
+        description: 'Planificador de viaje con calendario, eventos y presupuesto, cifrado y disponible offline.',
+        lang: 'es',
+        start_url: '/',
+        scope: '/',
+        display: 'standalone',
+        background_color: '#f4ede1',
+        theme_color: '#a8453f',
+        icons: [
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+        ]
+      },
+      workbox: {
+        // El vault se sincroniza vía fetch propio (crypto.js) con manejo de errores offline;
+        // no lo precacheamos para que siempre pida la versión más nueva cuando hay red.
+        globIgnores: ['shared-vault.json'],
+        navigateFallbackDenylist: [/^\/api\//]
+      }
+    })
+  ],
   define: {
     // La semilla se inyecta en build time desde la variable de entorno TRIP_CRYPTO_SEED
     __CRYPTO_SEED__: JSON.stringify(cryptoSeed),
