@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { uid, computeWalletBalance, DESTINATION_COLOR_PALETTE } from '../lib/events'
+import { uid, computeWalletBalance, getEventSplits, DESTINATION_COLOR_PALETTE } from '../lib/events'
 import CollapsibleCard from './CollapsibleCard'
 
 const WALLET_COLORS = DESTINATION_COLOR_PALETTE
@@ -10,13 +10,14 @@ function fmt(value) {
 
 export default function WalletPanel({ wallets, events, onAddWallet, onEditWallet, onDeleteWallet, showToast }) {
   const [form, setForm] = useState(null) // null | 'new' | wallet
+  const [expenseFormId, setExpenseFormId] = useState(null) // id de billetera con el form de gasto abierto
 
   function handleSave(payload) {
     if (form && form !== 'new' && form.id) {
       onEditWallet(form.id, payload)
       showToast?.('Billetera actualizada', 'success')
     } else {
-      onAddWallet({ id: uid(), ...payload })
+      onAddWallet({ id: uid(), manualExpenses: [], ...payload })
       showToast?.('Billetera creada', 'success')
     }
     setForm(null)
@@ -26,6 +27,27 @@ export default function WalletPanel({ wallets, events, onAddWallet, onEditWallet
     if (!confirm('¿Eliminar esta billetera? Los gastos asociados quedaran sin asignar.')) return
     onDeleteWallet(id)
     showToast?.('Billetera eliminada', 'success')
+  }
+
+  function handleAddExpense(wallet, { label, amount }) {
+    const expense = { id: uid(), label, amount, createdAt: new Date().toISOString() }
+    onEditWallet(wallet.id, { manualExpenses: [...(wallet.manualExpenses || []), expense] })
+    showToast?.('Gasto agregado', 'success')
+    setExpenseFormId(null)
+  }
+
+  function handleDeleteExpense(wallet, expenseId) {
+    onEditWallet(wallet.id, { manualExpenses: (wallet.manualExpenses || []).filter((e) => e.id !== expenseId) })
+  }
+
+  function handleResetSpent(wallet) {
+    const hasEventCosts = events.some((e) => getEventSplits(e).some((s) => s.walletId === wallet.id))
+    const extra = hasEventCosts
+      ? ' Los gastos cargados desde eventos (vuelos, hoteles, etc.) no se ven afectados, solo los gastos manuales.'
+      : ''
+    if (!confirm(`¿Resetear los gastos manuales de "${wallet.name}"? Esta acción no se puede deshacer.${extra}`)) return
+    onEditWallet(wallet.id, { manualExpenses: [] })
+    showToast?.('Gastos reseteados', 'success')
   }
 
   return (
@@ -65,6 +87,51 @@ export default function WalletPanel({ wallets, events, onAddWallet, onEditWallet
                 <span>Inicial: {fmt(initial)}</span>
                 <span>Gastado: {fmt(spent)}</span>
               </div>
+
+              {w.manualExpenses?.length > 0 && (
+                <div className="wallet-expense-list">
+                  {w.manualExpenses.map((exp) => (
+                    <div key={exp.id} className="wallet-expense-row">
+                      <span className="wallet-expense-label">{exp.label}</span>
+                      <span className="wallet-expense-amount">{fmt(exp.amount)}</span>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-icon"
+                        onClick={() => handleDeleteExpense(w, exp.id)}
+                        title="Eliminar gasto"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {expenseFormId === w.id ? (
+                <ExpenseForm
+                  onSave={(payload) => handleAddExpense(w, payload)}
+                  onCancel={() => setExpenseFormId(null)}
+                />
+              ) : (
+                <div className="wallet-expense-actions">
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ flex: 1, justifyContent: 'center' }}
+                    onClick={() => setExpenseFormId(w.id)}
+                  >
+                    + Agregar gasto
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ flex: 1, justifyContent: 'center' }}
+                    onClick={() => handleResetSpent(w)}
+                  >
+                    ↺ Resetear gastado
+                  </button>
+                </div>
+              )}
             </div>
           )
         })}
@@ -155,6 +222,51 @@ function WalletForm({ initial, onSave, onCancel }) {
         <button type="submit" className="btn btn-primary">
           {initial ? 'Guardar cambios' : 'Crear'}
         </button>
+      </div>
+    </form>
+  )
+}
+
+function ExpenseForm({ onSave, onCancel }) {
+  const [label, setLabel] = useState('')
+  const [amount, setAmount] = useState('')
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    const trimmedLabel = label.trim()
+    const parsedAmount = parseFloat(amount)
+    if (!trimmedLabel || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return
+    onSave({ label: trimmedLabel, amount: parsedAmount })
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="destination-form" style={{ marginTop: 8 }}>
+      <div className="form-group">
+        <label>Leyenda</label>
+        <input
+          type="text"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Ej: Almuerzo, Souvenirs..."
+          autoFocus
+        />
+      </div>
+
+      <div className="form-group">
+        <label>Monto</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="0"
+        />
+      </div>
+
+      <div className="form-actions">
+        <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
+        <button type="submit" className="btn btn-primary">Agregar</button>
       </div>
     </form>
   )

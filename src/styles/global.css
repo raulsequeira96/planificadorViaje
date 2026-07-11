@@ -1904,6 +1904,42 @@ input, textarea, select {
   letter-spacing: 0.05em;
 }
 
+.wallet-expense-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+}
+
+.wallet-expense-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.wallet-expense-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+.wallet-expense-amount {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+
+.wallet-expense-actions {
+  display: flex;
+  gap: 8px;
+}
+
 /* ============ Paid by control (inside event card) ============ */
 .paid-by-row {
   display: flex;

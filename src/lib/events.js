@@ -25,6 +25,19 @@ export const EVENT_TYPES = {
       { key: 'trainNumber', label: 'Número de tren', type: 'text' }
     ]
   },
+  ferry: {
+    id: 'ferry',
+    label: 'Ferry',
+    icon: '⛴️',
+    color: '#1f7a8c',
+    fields: [
+      { key: 'origin', label: 'Origen', type: 'text' },
+      { key: 'destination', label: 'Destino', type: 'text' },
+      { key: 'departureTime', label: 'Hora de salida', type: 'time' },
+      { key: 'arrivalTime', label: 'Hora de llegada', type: 'time' },
+      { key: 'operator', label: 'Naviera / Operador', type: 'text' }
+    ]
+  },
   transfer: {
     id: 'transfer',
     label: 'Traslado',
@@ -171,12 +184,17 @@ export function getEventSplits(event) {
 }
 
 // Calcula gastos descontados de una billetera y saldo disponible
+// (incluye costos de eventos asignados + gastos manuales cargados en la billetera)
 export function computeWalletBalance(wallet, events) {
   let spent = 0
   for (const e of events || []) {
     for (const s of getEventSplits(e)) {
       if (s.walletId === wallet.id) spent += s.amount
     }
+  }
+  for (const exp of wallet.manualExpenses || []) {
+    const amount = parseFloat(exp.amount)
+    if (Number.isFinite(amount)) spent += amount
   }
   const initial = Number(wallet.initialBalance) || 0
   return { spent, balance: initial - spent }
@@ -224,7 +242,17 @@ export function migrateData(data) {
       id: w.id,
       name: w.name,
       color: w.color || '#3b82f6',
-      initialBalance: Number(w.initialBalance) || 0
+      initialBalance: Number(w.initialBalance) || 0,
+      manualExpenses: Array.isArray(w.manualExpenses)
+        ? w.manualExpenses
+          .map((exp) => ({
+            id: exp.id,
+            label: exp.label || '',
+            amount: Number(exp.amount) || 0,
+            createdAt: exp.createdAt || null
+          }))
+          .filter((exp) => exp.id && exp.label)
+        : []
     }))
     : []
   return { destinations, events, notes, wallets }
